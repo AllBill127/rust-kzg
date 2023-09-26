@@ -1225,6 +1225,7 @@ dependencies = [
  "hex",
  "kzg",
  "kzg-bench",
+ "libc",
  "num-bigint",
  "num_cpus",
  "pairing",

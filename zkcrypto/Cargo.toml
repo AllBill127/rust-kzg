@@ -10,11 +10,12 @@ blst = {'git' = 'https://github.com/supranational/blst.git'}
 pairing = "0.23.0"
 bls12_381 = "0.8.0"
 num-bigint = "0.4"
-rand = "0.8"
+rand = { version = "0.8.5", optional = true }
 rand_core = "0.6"
 subtle = "2.5.0"
-rayon = "1.7.1"
-num_cpus = "1.16.0"
+libc = { version = "0.2.148", default-features = false }
+rayon = { version = "1.7.1", optional = true }
+num_cpus = { version = "1.16.0", optional = true }
 hex = "0.4.3"
 
 [dependencies.ff]
@@ -25,8 +26,25 @@ default-features = false
 criterion = "0.5.1"
 
 [features]
-parallel = []
+default = [
+    "std",
+    "rand",
+]
+std = [
+    "kzg/std",
+    "libc/std",
+]
+rand = [
+    "dep:rand",
+    "kzg/rand",
+]
+parallel = [
+    "dep:rayon",
+    "dep:num_cpus",
+]
 minimal-spec = ["kzg/minimal-spec", "kzg-bench/minimal-spec"]
+
+
 
 [[bench]]
 name = "zero_poly"
