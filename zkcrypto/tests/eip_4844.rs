@@ -11,9 +11,9 @@ mod tests {
         verify_kzg_proof_batch_fails_with_incorrect_proof_test, verify_kzg_proof_batch_test,
     };
     use rust_kzg_zkcrypto::eip_4844::{
-        blob_to_kzg_commitment, blob_to_polynomial, bytes_to_blob, compute_blob_kzg_proof,
-        compute_kzg_proof, compute_powers, evaluate_polynomial_in_evaluation_form,
-        load_trusted_setup, verify_blob_kzg_proof, verify_blob_kzg_proof_batch, verify_kzg_proof,
+        blob_to_kzk_commitment_zkc, blob_to_polynomial, bytes_to_blob, compute_blob_kzg_proof_zkc,
+        compute_kzg_proof_zkc, compute_powers, evaluate_polynomial_in_evaluation_form,
+        load_trusted_setup_file_zkc, verify_blob_kzg_proof_zkc, verify_blob_kzg_proof_batch_zkc, verify_kzg_proof_zkc,
     };
     use rust_kzg_zkcrypto::fftsettings::ZkFFTSettings;
     use rust_kzg_zkcrypto::kzg_proofs::KZGSettings;
@@ -41,7 +41,7 @@ mod tests {
             KzgPoly,
             ZkFFTSettings,
             KZGSettings,
-        >(&load_trusted_setup, &blob_to_kzg_commitment);
+        >(&load_trusted_setup_file_zkc, &blob_to_kzk_commitment_zkc);
     }
 
     #[test]
@@ -54,8 +54,8 @@ mod tests {
             ZkFFTSettings,
             KZGSettings,
         >(
-            &load_trusted_setup,
-            &compute_kzg_proof,
+            &load_trusted_setup_file_zkc,
+            &compute_kzg_proof_zkc,
             &blob_to_polynomial,
             &evaluate_polynomial_in_evaluation_form,
         );
@@ -71,13 +71,13 @@ mod tests {
             ZkFFTSettings,
             KZGSettings,
         >(
-            &load_trusted_setup,
-            &blob_to_kzg_commitment,
+            &load_trusted_setup_file_zkc,
+            &blob_to_kzk_commitment_zkc,
             &bytes_to_blob,
-            &compute_kzg_proof,
+            &compute_kzg_proof_zkc,
             &blob_to_polynomial,
             &evaluate_polynomial_in_evaluation_form,
-            &verify_kzg_proof,
+            &verify_kzg_proof_zkc,
         );
     }
 
@@ -92,13 +92,13 @@ mod tests {
             ZkFFTSettings,
             KZGSettings,
         >(
-            &load_trusted_setup,
-            &blob_to_kzg_commitment,
+            &load_trusted_setup_file_zkc,
+            &blob_to_kzk_commitment_zkc,
             &bytes_to_blob,
-            &compute_kzg_proof,
+            &compute_kzg_proof_zkc,
             &blob_to_polynomial,
             &evaluate_polynomial_in_evaluation_form,
-            &verify_kzg_proof,
+            &verify_kzg_proof_zkc,
         );
     }
 
@@ -112,13 +112,13 @@ mod tests {
             ZkFFTSettings,
             KZGSettings,
         >(
-            &load_trusted_setup,
-            &blob_to_kzg_commitment,
+            &load_trusted_setup_file_zkc,
+            &blob_to_kzk_commitment_zkc,
             &bytes_to_blob,
-            &compute_kzg_proof,
+            &compute_kzg_proof_zkc,
             &blob_to_polynomial,
             &evaluate_polynomial_in_evaluation_form,
-            &verify_kzg_proof,
+            &verify_kzg_proof_zkc,
         );
     }
 
@@ -132,11 +132,11 @@ mod tests {
             ZkFFTSettings,
             KZGSettings,
         >(
-            &load_trusted_setup,
-            &blob_to_kzg_commitment,
+            &load_trusted_setup_file_zkc,
+            &blob_to_kzk_commitment_zkc,
             &bytes_to_blob,
-            &compute_blob_kzg_proof,
-            &verify_blob_kzg_proof,
+            &compute_blob_kzg_proof_zkc,
+            &verify_blob_kzg_proof_zkc,
         );
     }
 
@@ -150,11 +150,11 @@ mod tests {
             ZkFFTSettings,
             KZGSettings,
         >(
-            &load_trusted_setup,
-            &blob_to_kzg_commitment,
+            &load_trusted_setup_file_zkc,
+            &blob_to_kzk_commitment_zkc,
             &bytes_to_blob,
-            &compute_blob_kzg_proof,
-            &verify_blob_kzg_proof,
+            &compute_blob_kzg_proof_zkc,
+            &verify_blob_kzg_proof_zkc,
         );
     }
 
@@ -168,11 +168,11 @@ mod tests {
             ZkFFTSettings,
             KZGSettings,
         >(
-            &load_trusted_setup,
-            &blob_to_kzg_commitment,
+            &load_trusted_setup_file_zkc,
+            &blob_to_kzk_commitment_zkc,
             &bytes_to_blob,
-            &compute_blob_kzg_proof,
-            &verify_blob_kzg_proof_batch,
+            &compute_blob_kzg_proof_zkc,
+            &verify_blob_kzg_proof_batch_zkc,
         );
     }
 
@@ -186,11 +186,11 @@ mod tests {
             ZkFFTSettings,
             KZGSettings,
         >(
-            &load_trusted_setup,
-            &blob_to_kzg_commitment,
+            &load_trusted_setup_file_zkc,
+            &blob_to_kzk_commitment_zkc,
             &bytes_to_blob,
-            &compute_blob_kzg_proof,
-            &verify_blob_kzg_proof_batch,
+            &compute_blob_kzg_proof_zkc,
+            &verify_blob_kzg_proof_batch_zkc,
         );
     }
 }
