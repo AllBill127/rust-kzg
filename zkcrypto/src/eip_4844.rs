@@ -1,18 +1,33 @@
 use std::convert::TryInto;
+use std::ptr::null_mut;
+#[cfg(feature = "std")]
+use libc::FILE;
+#[cfg(feature = "std")]
 use std::fs::File;
+#[cfg(feature = "std")]
 use std::io::Read;
 use std::ops::Sub;
+use blst::{blst_fp, blst_fp2, blst_fr, blst_p1, blst_p2};
 
 use crate::fk20::reverse_bit_order;
 use crate::kzg_proofs::{check_proof_single, KZGSettings};
 use crate::kzg_types::{pairings_verify, ZkG1Projective, ZkG2Projective};
 use crate::poly::KzgPoly;
 use crate::zkfr::blsScalar;
+use crate::curve::fp::Fp;
+use crate::curve::fp2::Fp2;
+use crate::curve::g1::{G1Affine, G1Projective};
+use crate::curve::g2::G2Projective;
+
+#[cfg(feature = "std")]
+use kzg::eip_4844::load_trusted_setup_string;
+
 use kzg::eip_4844::{
-    bytes_of_uint64, hash, load_trusted_setup_string, BYTES_PER_BLOB, BYTES_PER_COMMITMENT,
+    bytes_of_uint64, hash, BYTES_PER_BLOB, BYTES_PER_COMMITMENT,
     BYTES_PER_FIELD_ELEMENT, BYTES_PER_G1, BYTES_PER_G2, BYTES_PER_PROOF, CHALLENGE_INPUT_SIZE,
     FIAT_SHAMIR_PROTOCOL_DOMAIN, FIELD_ELEMENTS_PER_BLOB, RANDOM_CHALLENGE_KZG_BATCH_DOMAIN,
-    TRUSTED_SETUP_NUM_G2_POINTS,
+    TRUSTED_SETUP_NUM_G2_POINTS, Blob, KZGCommitment, TRUSTED_SETUP_NUM_G1_POINTS, Bytes32,
+    Bytes48, CKZGSettings, KZGProof, C_KZG_RET, C_KZG_RET_BADARGS, C_KZG_RET_OK,
 };
 use kzg::{cfg_into_iter, FFTSettings, Fr, Poly, FFTG1, G1, G2};
 
@@ -95,6 +110,7 @@ fn load_trusted_setup_zkc(g1_bytes: &[u8], g2_bytes: &[u8]) -> KZGSettings {
     }
 }
 
+#[cfg(feature = "std")]
 pub fn load_trusted_setup_file_zkc(filepath: &str) -> KZGSettings {
     let mut file = File::open(filepath).expect("Unable to open file");
     let mut contents = String::new();
@@ -552,8 +568,198 @@ pub fn verify_blob_kzg_proof_batch_zkc(
 }
 
 
-// help functions for api bindings
+// blob deserialization to blsScalar
+struct MyError;
+type MyResult<T> = Result<T, MyError>;
+fn ct_option_to_result<T>(ct_option: subtle::CtOption<T>) -> MyResult<T> {
+    if ct_option.is_some().into() {
+        Ok(ct_option.unwrap())
+    } else {
+        Err(MyError)
+    }
+}
 
+unsafe fn deserialize_blob(blob: *const Blob) -> Result<Vec<blsScalar>, C_KZG_RET> {
+    (*blob)
+        .bytes
+        .chunks(BYTES_PER_FIELD_ELEMENT)
+        .map(|chunk| {
+            let mut bytes = [0u8; BYTES_PER_FIELD_ELEMENT];
+            bytes.copy_from_slice(chunk);
+            let option = blsScalar::from_bytes(&bytes);
+            if let Ok(result) = ct_option_to_result(option) {
+                Ok(result)
+            } else {
+                Err(C_KZG_RET_BADARGS)
+            }
+        })
+        .collect::<Result<Vec<blsScalar>, C_KZG_RET>>()
+}
+
+// conversion from C settings to zkcrypto settings
+fn convert_blst_fr_to_scalar(blst: blst_fr) -> blsScalar {
+    blsScalar(blst.l)
+}
+
+fn fft_settings_to_rust(c_settings: *const CKZGSettings) -> ZkFFTSettings {
+    let settings = unsafe { &*c_settings };
+
+    let roots_of_unity = unsafe {
+        core::slice::from_raw_parts(settings.roots_of_unity, (settings.max_width + 1) as usize)
+            .iter()
+            .map(|r| convert_blst_fr_to_scalar(*r))
+            .collect::<Vec<blsScalar>>()
+    };
+    let mut expanded_roots_of_unity = roots_of_unity.clone();
+    reverse_bit_order(&mut expanded_roots_of_unity);
+    let mut reverse_roots_of_unity = expanded_roots_of_unity.clone();
+    reverse_roots_of_unity.reverse();
+
+    let mut first_root = expanded_roots_of_unity[1];
+    let first_root_arr = [first_root; 1];
+    first_root = first_root_arr[0];
+
+    ZkFFTSettings {
+        max_width: settings.max_width as usize,
+        root_of_unity: first_root,
+        expanded_roots_of_unity,
+        reverse_roots_of_unity,
+        roots_of_unity,
+    }
+}
+
+fn convert_blst_p1_to_g1(blst: &blst_p1) -> G1Projective {  //PERTIKRINTI
+    let fp_x = Fp(blst.x.l);
+    let fp_y = Fp(blst.y.l);
+    let fp_z = Fp(blst.z.l);
+
+    G1Projective { x: fp_x, y: fp_y, z: fp_z }
+}
+fn convert_blst_p2_to_g2(blst: &blst_p2) -> G2Projective {
+    let fp2_c0 = Fp {
+        0: blst.x.fp[0].l,
+    };
+    let fp2_c1 = Fp {
+        0: blst.x.fp[1].l,
+    };
+    let fp2_x = Fp2 {
+        c0: fp2_c0,
+        c1: fp2_c1,
+    };
+
+    let fp2_c0 = Fp {
+        0: blst.y.fp[0].l,
+    };
+    let fp2_c1 = Fp {
+        0: blst.y.fp[1].l,
+    };
+    let fp2_y = Fp2 {
+        c0: fp2_c0,
+        c1: fp2_c1,
+    };
+
+    let fp2_c0 = Fp {
+        0: blst.z.fp[0].l,
+    };
+    let fp2_c1 = Fp {
+        0: blst.z.fp[1].l,
+    };
+    let fp2_z = Fp2 {
+        c0: fp2_c0,
+        c1: fp2_c1,
+    };
+
+    G2Projective { x: fp2_x, y: fp2_y, z: fp2_z }
+}
+
+fn kzg_settings_to_rust(c_settings: &CKZGSettings) -> KZGSettings {
+    let res = KZGSettings {
+        fs: fft_settings_to_rust(c_settings),
+        secret_g1: unsafe {
+            core::slice::from_raw_parts(c_settings.g1_values, TRUSTED_SETUP_NUM_G1_POINTS)
+                .iter()
+                .map(|r| convert_blst_p1_to_g1(r))
+                .collect::<Vec<G1Projective>>()
+        },
+        secret_g2: unsafe {
+            core::slice::from_raw_parts(c_settings.g2_values, TRUSTED_SETUP_NUM_G2_POINTS)
+                .iter()
+                .map(|r| convert_blst_p2_to_g2(r))
+                .collect::<Vec<G2Projective>>()
+        },
+        length: 64  // questionable hard coded value (no clue if ok) 
+    };
+    res
+}
+
+// conversion from zkcrypto settings to C settings
+fn convert_g1_to_blst_p1(g1: G1Projective) -> blst_p1 {
+    let blst_x = blst_fp { l: g1.x.0 };
+    let blst_y = blst_fp { l: g1.y.0 };
+    let blst_z = blst_fp { l: g1.z.0 };
+
+    blst_p1 { x: blst_x, y: blst_y, z: blst_z }
+}
+fn convert_g2_to_blst_p2(g2: G2Projective) -> blst_p2 {
+    let blst_x = blst_fp2 {
+        fp: [
+            blst_fp { l: g2.x.c0.0 },
+            blst_fp { l: g2.x.c1.0 },
+        ],
+    };
+
+    let blst_y = blst_fp2 {
+        fp: [
+            blst_fp { l: g2.y.c0.0 },
+            blst_fp { l: g2.y.c1.0 },
+        ],
+    };
+
+    let blst_z = blst_fp2 {
+        fp: [
+            blst_fp { l: g2.z.c0.0 },
+            blst_fp { l: g2.z.c1.0 },
+        ],
+    };
+
+    blst_p2 { x: blst_x, y: blst_y, z: blst_z }
+}
+fn convert_scalar_to_fr(scalar: blsScalar) -> blst_fr {
+    blst_fr { l: scalar.0 }
+}
+
+fn kzg_settings_to_c(rust_settings: &KZGSettings) -> CKZGSettings {
+    let g1_val = rust_settings
+        .secret_g1
+        .iter()
+        .map(|r| convert_g1_to_blst_p1(*r))
+        .collect::<Vec<blst_p1>>();
+    let g1_val = Box::new(g1_val);
+    let g2_val = rust_settings
+        .secret_g2
+        .iter()
+        .map(|r| convert_g2_to_blst_p2(*r))
+        .collect::<Vec<blst_p2>>();
+    let x = g2_val.into_boxed_slice();
+    let stat_ref = Box::leak(x);
+    let v = Box::into_raw(g1_val);
+
+    let roots_of_unity = Box::new(
+        rust_settings
+            .fs
+            .roots_of_unity
+            .iter()
+            .map(|r| convert_scalar_to_fr(*r))
+            .collect::<Vec<blst_fr>>(),
+    );
+
+    CKZGSettings {
+        max_width: rust_settings.fs.max_width as u64,
+        roots_of_unity: unsafe { (*Box::into_raw(roots_of_unity)).as_mut_ptr() },
+        g1_values: unsafe { (*v).as_mut_ptr() },
+        g2_values: stat_ref.as_mut_ptr(),
+    }
+}
 
 
 // ============================== API bindings ================================
@@ -592,7 +798,7 @@ pub unsafe extern "C" fn load_trusted_setup(
 }
 
 /// # Safety
-//#[cfg(feature = "std")]
+#[cfg(feature = "std")]
 #[no_mangle]
 pub unsafe extern "C" fn load_trusted_setup_file(
     out: *mut CKZGSettings,
@@ -619,7 +825,7 @@ pub unsafe extern "C" fn load_trusted_setup_file(
 pub unsafe extern "C" fn compute_blob_kzg_proof(
     out: *mut KZGProof,
     blob: *const Blob,
-    commitment_bytes: *mut Bytes48,  // pakeistas imputas is 48 i 32 99%
+    commitment_bytes: *mut Bytes48,
     s: &CKZGSettings,
 ) -> C_KZG_RET {
     let deserialized_blob = deserialize_blob(blob);
@@ -649,32 +855,31 @@ pub unsafe extern "C" fn compute_blob_kzg_proof(
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn free_trusted_setup(s: *mut CKZGSettings) {
-    let max_width = (*(*s).fs).max_width as usize;
-    let rev = Box::from_raw(core::slice::from_raw_parts_mut(
-        (*(*s).fs).reverse_roots_of_unity,
-        max_width,
-    ));
-    drop(rev);
-    let exp = Box::from_raw(core::slice::from_raw_parts_mut(
-        (*(*s).fs).expanded_roots_of_unity,
-        max_width,
-    ));
-    drop(exp);
+    if s.is_null() {
+        return;
+    }
+
+    let max_width = (*s).max_width as usize;
     let roots = Box::from_raw(core::slice::from_raw_parts_mut(
-        (*(*s).fs).roots_of_unity,
+        (*s).roots_of_unity,
         max_width,
     ));
     drop(roots);
+    (*s).roots_of_unity = null_mut();
+
     let g1 = Box::from_raw(core::slice::from_raw_parts_mut(
         (*s).g1_values,
         TRUSTED_SETUP_NUM_G1_POINTS,
     ));
     drop(g1);
+    (*s).g1_values = null_mut();
+
     let g2 = Box::from_raw(core::slice::from_raw_parts_mut(
         (*s).g2_values,
         TRUSTED_SETUP_NUM_G2_POINTS,
     ));
     drop(g2);
+    (*s).g2_values = null_mut();
 }
 
 /// # Safety
