@@ -417,15 +417,15 @@ impl Scalar {
         let mut tmp = Scalar([0, 0, 0, 0]);
 
         // NOTE: change endianness of the implementation (c-kzg-4844 update)
-        // tmp.0[0] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
-        // tmp.0[1] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
-        // tmp.0[2] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap());
-        // tmp.0[3] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
+        tmp.0[0] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
+        tmp.0[1] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
+        tmp.0[2] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap());
+        tmp.0[3] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
 
-        tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
-        tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
-        tmp.0[2] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap());
-        tmp.0[3] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
+        // tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
+        // tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
+        // tmp.0[2] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap());
+        // tmp.0[3] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
 
         // Try to subtract the modulus
         let (_, borrow) = sbb(tmp.0[0], MODULUS.0[0], 0);
@@ -454,15 +454,15 @@ impl Scalar {
 
         let mut res = [0; 32];
         // NOTE: change endianness of the implementation (c-kzg-4844 update)
-        // res[0..8].copy_from_slice(&tmp.0[0].to_le_bytes());
-        // res[8..16].copy_from_slice(&tmp.0[1].to_le_bytes());
-        // res[16..24].copy_from_slice(&tmp.0[2].to_le_bytes());
-        // res[24..32].copy_from_slice(&tmp.0[3].to_le_bytes());
+        res[0..8].copy_from_slice(&tmp.0[0].to_le_bytes());
+        res[8..16].copy_from_slice(&tmp.0[1].to_le_bytes());
+        res[16..24].copy_from_slice(&tmp.0[2].to_le_bytes());
+        res[24..32].copy_from_slice(&tmp.0[3].to_le_bytes());
 
-        res[0..8].copy_from_slice(&tmp.0[0].to_be_bytes());
-        res[8..16].copy_from_slice(&tmp.0[1].to_be_bytes());
-        res[16..24].copy_from_slice(&tmp.0[2].to_be_bytes());
-        res[24..32].copy_from_slice(&tmp.0[3].to_be_bytes());
+        // res[0..8].copy_from_slice(&tmp.0[0].to_be_bytes());
+        // res[8..16].copy_from_slice(&tmp.0[1].to_be_bytes());
+        // res[16..24].copy_from_slice(&tmp.0[2].to_be_bytes());
+        // res[24..32].copy_from_slice(&tmp.0[3].to_be_bytes());
 
         res
     }
@@ -471,27 +471,27 @@ impl Scalar {
     /// a `Scalar` by reducing by the modulus.
     pub fn from_bytes_wide(bytes: &[u8; 64]) -> Scalar {
         // NOTE: change endianness of the implementation (c-kzg-4844 update)
-        // Scalar::from_u512([
-        //     u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
-        //     u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap()),
-        //     u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap()),
-        //     u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap()),
-        //     u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[32..40]).unwrap()),
-        //     u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[40..48]).unwrap()),
-        //     u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[48..56]).unwrap()),
-        //     u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[56..64]).unwrap()),
-        // ])
-
         Scalar::from_u512([
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap()),
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap()),
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap()),
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[32..40]).unwrap()),
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[40..48]).unwrap()),
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[48..56]).unwrap()),
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[56..64]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[32..40]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[40..48]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[48..56]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[56..64]).unwrap()),
         ])
+
+        // Scalar::from_u512([
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[32..40]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[40..48]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[48..56]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[56..64]).unwrap()),
+        // ])
     }
 
     fn from_u512(limbs: [u64; 8]) -> Scalar {
