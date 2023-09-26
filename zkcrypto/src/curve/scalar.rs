@@ -4,6 +4,7 @@
 use core::convert::TryFrom;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::iter::Product;
 use rand_core::RngCore;
 
 use ff::{Field, PrimeField};
@@ -372,6 +373,14 @@ const ROOT_OF_UNITY: Scalar = Scalar([
     0x5b1b_4c80_1819_d7ec,
     0x0af5_3ae3_52a3_1e64,
     0x5bf3_adda_19e9_b27b,
+]);
+
+// required by PrimeField trait
+const ROOT_OF_UNITY_INV: Scalar = Scalar([
+    0x40f9_0a96_4ff1_a535,
+    0xadc9_b5fb_3d70_4f7d,
+    0xa90e_d548_f72a_9da6,
+    0xf3fc_a202_0a0d_dcf0,
 ]);
 
 #[cfg(feature = "zeroize")]
@@ -873,19 +882,37 @@ impl<'a> From<&'a Scalar> for [u8; 32] {
     }
 }
 
+impl Product for Scalar {
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        let mut result = Scalar([1, 1, 1, 1]);
+        for element in iter {
+            for i in 0..4 {
+                result.0[i] *= element.0[i];
+            }
+        }
+
+        result
+    }
+}
+
+impl<'a> Product<&'a Self> for Scalar {
+    fn product<I: Iterator<Item = &'a Scalar>>(iter: I) -> Self {
+        let mut result = Scalar([1, 1, 1, 1]);
+
+        for element in iter {
+            for i in 0..4 {
+                result.0[i] *= element.0[i];
+            }
+        }
+        result
+    }
+}
+
 impl Field for Scalar {
     fn random(mut rng: impl RngCore) -> Self {
         let mut buf = [0; 64];
         rng.fill_bytes(&mut buf);
         Self::from_bytes_wide(&buf)
-    }
-
-    fn zero() -> Self {
-        Self::zero()
-    }
-
-    fn one() -> Self {
-        Self::one()
     }
 
     #[must_use]
@@ -904,6 +931,19 @@ impl Field for Scalar {
 
     fn sqrt(&self) -> CtOption<Self> {
         self.sqrt()
+    }
+
+    // required by Field trait 
+    const ZERO: Self = Self::zero();
+    const ONE: Self = Self::one();
+    fn sqrt_ratio(num: &Scalar, div: &Scalar) -> (Choice, Scalar) {
+        let sqrt_num = num.sqrt().unwrap();
+
+        let sqrt_div = div.sqrt().unwrap();
+
+        let ratio = sqrt_num * sqrt_div.invert().unwrap();
+
+        (Choice::from(1u8), ratio)
     }
 }
 
@@ -925,15 +965,16 @@ impl PrimeField for Scalar {
     const NUM_BITS: u32 = MODULUS_BITS;
     const CAPACITY: u32 = Self::NUM_BITS - 1;
 
-    fn multiplicative_generator() -> Self {
-        GENERATOR
-    }
+    const MULTIPLICATIVE_GENERATOR: Self = GENERATOR;
 
     const S: u32 = S;
 
-    fn root_of_unity() -> Self {
-        ROOT_OF_UNITY
-    }
+    const ROOT_OF_UNITY: Self = ROOT_OF_UNITY;
+
+    const MODULUS: &'static str = ""; // idk
+    const TWO_INV: Scalar = MODULUS; // idk
+    const ROOT_OF_UNITY_INV: Scalar = ROOT_OF_UNITY_INV;
+    const DELTA: Scalar = MODULUS; // idk
 }
 
 #[cfg(all(feature = "bits", not(target_pointer_width = "64")))]
