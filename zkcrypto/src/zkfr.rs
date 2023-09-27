@@ -77,12 +77,18 @@ impl Fr for blsScalar {
 
     fn to_u64_arr(&self) -> [u64; 4] {
         let bytes = self.to_bytes();
+        let mut firstBlock =  u64::from_be_bytes(bytes[24..32].try_into().unwrap());
+        let mut secondBlock =  u64::from_be_bytes(bytes[16..24].try_into().unwrap());
+        let mut thirdBlock =  u64::from_be_bytes(bytes[8..16].try_into().unwrap());
+        let mut fourtBlock =  u64::from_be_bytes(bytes[0..8].try_into().unwrap());
         [
-            u64::from_be_bytes(bytes[0..8].try_into().unwrap()),
-            u64::from_be_bytes(bytes[8..16].try_into().unwrap()),
-            u64::from_be_bytes(bytes[16..24].try_into().unwrap()),
-            u64::from_be_bytes(bytes[24..32].try_into().unwrap()),
+            firstBlock,
+            secondBlock,
+            thirdBlock,
+            fourtBlock
         ]
+        //let tmp = Scalar::montgomery_reduce(self.0[0], self.0[1], self.0[2], self.0[3], 0, 0, 0, 0);
+        //[tmp.0[3],tmp.0[2],tmp.0[1],tmp.0[0]]
     }
 
     fn is_one(&self) -> bool {
