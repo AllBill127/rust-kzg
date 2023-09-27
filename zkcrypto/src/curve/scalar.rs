@@ -417,10 +417,10 @@ impl Scalar {
         let mut tmp = Scalar([0, 0, 0, 0]);
 
         // NOTE: change endianness of the implementation (c-kzg-4844 update)
-        tmp.0[0] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
-        tmp.0[1] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
-        tmp.0[2] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap());
-        tmp.0[3] = u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
+        tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
+        tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
+        tmp.0[2] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap());
+        tmp.0[3] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
 
         // tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
         // tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
@@ -454,10 +454,10 @@ impl Scalar {
 
         let mut res = [0; 32];
         // NOTE: change endianness of the implementation (c-kzg-4844 update)
-        res[0..8].copy_from_slice(&tmp.0[0].to_le_bytes());
-        res[8..16].copy_from_slice(&tmp.0[1].to_le_bytes());
-        res[16..24].copy_from_slice(&tmp.0[2].to_le_bytes());
-        res[24..32].copy_from_slice(&tmp.0[3].to_le_bytes());
+        res[0..8].copy_from_slice(&tmp.0[0].to_be_bytes());
+        res[8..16].copy_from_slice(&tmp.0[1].to_be_bytes());
+        res[16..24].copy_from_slice(&tmp.0[2].to_be_bytes());
+        res[24..32].copy_from_slice(&tmp.0[3].to_be_bytes());
 
         // res[0..8].copy_from_slice(&tmp.0[0].to_be_bytes());
         // res[8..16].copy_from_slice(&tmp.0[1].to_be_bytes());
@@ -472,14 +472,14 @@ impl Scalar {
     pub fn from_bytes_wide(bytes: &[u8; 64]) -> Scalar {
         // NOTE: change endianness of the implementation (c-kzg-4844 update)
         Scalar::from_u512([
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[32..40]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[40..48]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[48..56]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[56..64]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[32..40]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[40..48]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[48..56]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[56..64]).unwrap()),
         ])
 
         // Scalar::from_u512([
@@ -1016,22 +1016,22 @@ impl PrimeFieldBits for Scalar {
 
         #[cfg(not(target_pointer_width = "64"))]
         let limbs = [
-            u32::from_le_bytes(bytes[0..4].try_into().unwrap()),
-            u32::from_le_bytes(bytes[4..8].try_into().unwrap()),
-            u32::from_le_bytes(bytes[8..12].try_into().unwrap()),
-            u32::from_le_bytes(bytes[12..16].try_into().unwrap()),
-            u32::from_le_bytes(bytes[16..20].try_into().unwrap()),
-            u32::from_le_bytes(bytes[20..24].try_into().unwrap()),
-            u32::from_le_bytes(bytes[24..28].try_into().unwrap()),
-            u32::from_le_bytes(bytes[28..32].try_into().unwrap()),
+            u32::from_be_bytes(bytes[0..4].try_into().unwrap()),
+            u32::from_be_bytes(bytes[4..8].try_into().unwrap()),
+            u32::from_be_bytes(bytes[8..12].try_into().unwrap()),
+            u32::from_be_bytes(bytes[12..16].try_into().unwrap()),
+            u32::from_be_bytes(bytes[16..20].try_into().unwrap()),
+            u32::from_be_bytes(bytes[20..24].try_into().unwrap()),
+            u32::from_be_bytes(bytes[24..28].try_into().unwrap()),
+            u32::from_be_bytes(bytes[28..32].try_into().unwrap()),
         ];
 
         #[cfg(target_pointer_width = "64")]
         let limbs = [
-            u64::from_le_bytes(bytes[0..8].try_into().unwrap()),
-            u64::from_le_bytes(bytes[8..16].try_into().unwrap()),
-            u64::from_le_bytes(bytes[16..24].try_into().unwrap()),
-            u64::from_le_bytes(bytes[24..32].try_into().unwrap()),
+            u64::from_be_bytes(bytes[0..8].try_into().unwrap()),
+            u64::from_be_bytes(bytes[8..16].try_into().unwrap()),
+            u64::from_be_bytes(bytes[16..24].try_into().unwrap()),
+            u64::from_be_bytes(bytes[24..32].try_into().unwrap()),
         ];
 
         FieldBits::new(limbs)

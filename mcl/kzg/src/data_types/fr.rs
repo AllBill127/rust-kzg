@@ -73,7 +73,7 @@ impl Fr {
     pub fn from_u64_arr(u: &[u64; 4]) -> Self {
         let mut arr = [0u8; 32];
         for i in 0..4 {
-            arr[i * 8..i * 8 + 8].copy_from_slice(&u[i].to_le_bytes());
+            arr[i * 8..i * 8 + 8].copy_from_slice(&u[i].to_be_bytes());
         }
         Fr::from_bytes(&arr).unwrap()
     }
@@ -95,7 +95,7 @@ impl Fr {
     pub fn to_u64_arr(&self) -> [u64; 4] {
         let v: Vec<u64> = Fr::to_bytes(self)
             .chunks(8)
-            .map(|ch| u64::from_le_bytes(ch.try_into().unwrap()))
+            .map(|ch| u64::from_be_bytes(ch.try_into().unwrap()))
             .collect();
 
         v.try_into().unwrap()

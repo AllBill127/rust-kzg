@@ -962,10 +962,10 @@ impl G1Projective {
         ];
 
         let t: [u64; 4] = [
-            u64::from_le_bytes(k[0..8].try_into().unwrap()),
-            u64::from_le_bytes(k[8..16].try_into().unwrap()),
-            u64::from_le_bytes(k[16..24].try_into().unwrap()),
-            u64::from_le_bytes(k[24..32].try_into().unwrap()),
+            u64::from_be_bytes(k[0..8].try_into().unwrap()),
+            u64::from_be_bytes(k[8..16].try_into().unwrap()),
+            u64::from_be_bytes(k[16..24].try_into().unwrap()),
+            u64::from_be_bytes(k[24..32].try_into().unwrap()),
         ];
 
         /* Multiply b2 by v[0] and round. */
