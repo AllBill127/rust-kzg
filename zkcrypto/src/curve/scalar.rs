@@ -454,10 +454,10 @@ impl Scalar {
 
         let mut res = [0; 32];
         // NOTE: change endianness of the implementation (c-kzg-4844 update)
-        res[0..8].copy_from_slice(&tmp.0[0].to_be_bytes());
-        res[8..16].copy_from_slice(&tmp.0[1].to_be_bytes());
-        res[16..24].copy_from_slice(&tmp.0[2].to_be_bytes());
-        res[24..32].copy_from_slice(&tmp.0[3].to_be_bytes());
+        res[0..8].copy_from_slice(&tmp.0[3].to_be_bytes());
+        res[8..16].copy_from_slice(&tmp.0[2].to_be_bytes());
+        res[16..24].copy_from_slice(&tmp.0[1].to_be_bytes());
+        res[24..32].copy_from_slice(&tmp.0[0].to_be_bytes());
 
         // res[0..8].copy_from_slice(&tmp.0[0].to_be_bytes());
         // res[8..16].copy_from_slice(&tmp.0[1].to_be_bytes());

@@ -40,10 +40,10 @@ impl Fr for blsScalar {
             .and_then(|bytes: &[u8; BYTES_PER_FIELD_ELEMENT]| {
                 let mut tmp = Scalar([0, 0, 0, 0]);
 
-                tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
-                tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
-                tmp.0[2] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap());
-                tmp.0[3] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
+                tmp.0[3] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
+                tmp.0[2] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
+                tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap());
+                tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
 
                 // Try to subtract the modulus
                 let (_, borrow) = sbb(tmp.0[0], MODULUS.0[0], 0);
@@ -77,18 +77,12 @@ impl Fr for blsScalar {
 
     fn to_u64_arr(&self) -> [u64; 4] {
         let bytes = self.to_bytes();
-        let mut firstBlock =  u64::from_be_bytes(bytes[24..32].try_into().unwrap());
-        let mut secondBlock =  u64::from_be_bytes(bytes[16..24].try_into().unwrap());
-        let mut thirdBlock =  u64::from_be_bytes(bytes[8..16].try_into().unwrap());
-        let mut fourtBlock =  u64::from_be_bytes(bytes[0..8].try_into().unwrap());
         [
-            firstBlock,
-            secondBlock,
-            thirdBlock,
-            fourtBlock
+            u64::from_be_bytes(bytes[24..32].try_into().unwrap()),
+            u64::from_be_bytes(bytes[16..24].try_into().unwrap()),
+            u64::from_be_bytes(bytes[8..16].try_into().unwrap()),
+            u64::from_be_bytes(bytes[0..8].try_into().unwrap())
         ]
-        //let tmp = Scalar::montgomery_reduce(self.0[0], self.0[1], self.0[2], self.0[3], 0, 0, 0, 0);
-        //[tmp.0[3],tmp.0[2],tmp.0[1],tmp.0[0]]
     }
 
     fn is_one(&self) -> bool {
