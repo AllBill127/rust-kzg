@@ -69,7 +69,7 @@ fn load_trusted_setup_zkc(g1_bytes: &[u8], g2_bytes: &[u8]) -> KZGSettings {
     assert_eq!(g1_bytes.len() / BYTES_PER_G1, FIELD_ELEMENTS_PER_BLOB);
     assert_eq!(g2_bytes.len() / BYTES_PER_G2, TRUSTED_SETUP_NUM_G2_POINTS);
 
-    let g1_projectives: Vec<ZkG1Projective> = g1_bytes
+    let mut g1_projectives: Vec<ZkG1Projective> = g1_bytes
         .chunks(BYTES_PER_G1)
         .map(|chunk| {
             G1::from_bytes(
@@ -99,11 +99,11 @@ fn load_trusted_setup_zkc(g1_bytes: &[u8], g2_bytes: &[u8]) -> KZGSettings {
     }
 
     let fs = ZkFFTSettings::new(max_scale).unwrap();
-    let mut g1_values = fs.fft_g1(&g1_projectives, true).unwrap();
-    reverse_bit_order(&mut g1_values);
+    //let mut g1_values = fs.fft_g1(&g1_projectives, true).unwrap();
+    reverse_bit_order(&mut g1_projectives);
 
     KZGSettings {
-        secret_g1: g1_values,
+        secret_g1: g1_projectives,
         secret_g2: g2_values,
         fs,
         length: num_g1_points as u64,
