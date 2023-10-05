@@ -341,6 +341,12 @@ const R: Scalar = Scalar([
     0x998c_4fef_ecbc_4ff5,
     0x1824_b159_acc5_056f,
 ]);
+// const R: Scalar = Scalar([
+//     0xfeffffff_01000000,
+//     0x02488003_faB78458,
+//     0xf54fbcEC_ef4f8c99,
+//     0x6f05c5ac_59b12418,
+// ]);
 
 /// R^2 = 2^512 mod q
 pub const R2: Scalar = Scalar([
@@ -348,6 +354,10 @@ pub const R2: Scalar = Scalar([
     0x2b6c_edcb_8792_5c23,
     0x05d3_1496_7254_398f,
     0x0748_d9d9_9f59_ff11,
+    // 0x6d9c_f2f3_90e9_99c9,
+    // 0x235c_9287_cbed_6c2b,
+    // 0x8f39_5472_9614_d305,
+    // 0x11ff_599f_d9d9_4807,
 ]);
 
 /// R^3 = 2^768 mod q
@@ -417,10 +427,10 @@ impl Scalar {
         let mut tmp = Scalar([0, 0, 0, 0]);
 
         // NOTE: change endianness of the implementation (c-kzg-4844 update)
-        tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
-        tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
-        tmp.0[2] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap());
-        tmp.0[3] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
+        tmp.0[3] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
+        tmp.0[2] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
+        tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap());
+        tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
 
         // tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
         // tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
@@ -483,14 +493,14 @@ impl Scalar {
         ])
 
         // Scalar::from_u512([
-        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
-        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap()),
-        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap()),
-        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap()),
-        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[32..40]).unwrap()),
-        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[40..48]).unwrap()),
-        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[48..56]).unwrap()),
         //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[56..64]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[48..56]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[40..48]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[32..40]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap()),
+        //     u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
         // ])
     }
 
@@ -508,10 +518,13 @@ impl Scalar {
         // that (2^256 - 1)*c is an acceptable product for the reduction. Therefore, the
         // reduction always works so long as `c` is in the field; in this case it is either the
         // constant `R2` or `R3`.
-        let d0 = Scalar([limbs[0], limbs[1], limbs[2], limbs[3]]);
-        let d1 = Scalar([limbs[4], limbs[5], limbs[6], limbs[7]]);
+        // let d0 = Scalar([limbs[0], limbs[1], limbs[2], limbs[3]]);   // little endian (old impl)
+        // let d1 = Scalar([limbs[4], limbs[5], limbs[6], limbs[7]]);   // little endian (old impl)
+        let d0 = Scalar([limbs[3], limbs[2], limbs[1], limbs[0]]);
+        let d1: Scalar = Scalar([limbs[7], limbs[6], limbs[5], limbs[4]]);
         // Convert to Montgomery form
-        d0 * R2 + d1 * R3
+        // d0 * R2 + d1 * R3    // little endian (old impl)
+        d0 * R3 + d1 * R2
     }
 
     /// Converts from an integer represented in little endian
@@ -1084,11 +1097,13 @@ fn test_debug() {
     );
     assert_eq!(
         format!("{:?}", Scalar::one()),
-        "0x0000000000000000000000000000000000000000000000000000000000000001"
+        // "0x0000000000000000000000000000000000000000000000000000000000000001"  //little endian (old impl)
+        "0x0100000000000000000000000000000000000000000000000000000000000000"
     );
     assert_eq!(
         format!("{:?}", R2),
-        "0x1824b159acc5056f998c4fefecbc4ff55884b7fa0003480200000001fffffffe"
+        // "0x1824b159acc5056f998c4fefecbc4ff55884b7fa0003480200000001fffffffe"    //little endian (old impl)
+        "0xfeffffff0100000002480300fab78458f54fbcecef4f8c996f05c5ac59b12418"
     );
 }
 
@@ -1110,176 +1125,223 @@ fn test_to_bytes() {
         [
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0
-        ]
+        ]   
     );
 
     assert_eq!(
         Scalar::one().to_bytes(),
+        // [
+        //     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        //     0, 0, 0
+        // ]   //little endian (old impl)
         [
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 1
         ]
     );
 
     assert_eq!(
         R2.to_bytes(),
+        // [
+        //     254, 255, 255, 255, 1, 0, 0, 0, 2, 72, 3, 0, 250, 183, 132, 88, 245, 79, 188, 236, 239,
+        //     79, 140, 153, 111, 5, 197, 172, 89, 177, 36, 24
+        // ]   //little endian (old impl)
         [
-            254, 255, 255, 255, 1, 0, 0, 0, 2, 72, 3, 0, 250, 183, 132, 88, 245, 79, 188, 236, 239,
-            79, 140, 153, 111, 5, 197, 172, 89, 177, 36, 24
+            24, 36, 177, 89, 172, 197, 5, 111, 153, 140, 79, 239, 236, 188, 79, 245, 88, 132, 183, 250, 
+            0, 3, 72, 2, 0, 0, 0, 1, 255, 255, 255, 254
         ]
     );
 
     assert_eq!(
         (-&Scalar::one()).to_bytes(),
+        // [
+        //     0, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
+        //     216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115
+        // ]   //little endian (old impl)
         [
-            0, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115
+            115, 237, 167, 83, 41, 157, 125, 72, 51, 57, 216, 8, 9, 161, 216, 5, 83, 189, 164, 2, 255, 
+            254, 91, 254, 255, 255, 255, 255, 0, 0, 0, 0
         ]
     );
 }
 
 #[test]
 fn test_from_bytes() {
-    assert_eq!(
-        Scalar::from_bytes(&[
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0
-        ])
-        .unwrap(),
-        Scalar::zero()
-    );
+    // Test 1
+    // prepare for test
+    let mut res = Scalar::from_bytes(&[
+        // 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        // 0, 0, 0  //little endian (old impl)
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0
+    ]).unwrap();
+    let mut expected = Scalar::zero();
+    assert_eq!(res, expected);
 
-    assert_eq!(
-        Scalar::from_bytes(&[
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0
-        ])
-        .unwrap(),
-        Scalar::one()
-    );
+    // Test 2
+    res = Scalar::from_bytes(&[
+        // 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        // 0, 0, 0  //little endian (old impl)
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 1
+    ]).unwrap();
+    expected = Scalar::one();
+    assert_eq!(res, expected);
 
-    assert_eq!(
-        Scalar::from_bytes(&[
-            254, 255, 255, 255, 1, 0, 0, 0, 2, 72, 3, 0, 250, 183, 132, 88, 245, 79, 188, 236, 239,
-            79, 140, 153, 111, 5, 197, 172, 89, 177, 36, 24
-        ])
-        .unwrap(),
-        R2
-    );
+    // Test 3
+    res = Scalar::from_bytes(&[
+        // 254, 255, 255, 255, 1, 0, 0, 0, 2, 72, 3, 0, 250, 183, 132, 88, 245, 79, 188, 236, 239,
+        // 79, 140, 153, 111, 5, 197, 172, 89, 177, 36, 24  // little endian (old impl)
+        24, 36, 177, 89, 172, 197, 5, 111, 153, 140, 79, 239, 236, 188, 79, 245, 88, 132, 183, 250, 0, 3, 
+        72, 2, 0, 0, 0, 1, 255, 255, 255, 254
+    ]).unwrap();
+    expected = R2;
+    assert_eq!(res, expected);
 
     // -1 should work
-    assert!(bool::from(
-        Scalar::from_bytes(&[
-            0, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115
-        ])
-        .is_some()
-    ));
+    // Test 4
+    let mut res_option = Scalar::from_bytes(&[
+        // 0, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
+        // 216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115 //little endian (old impl)
+        115, 237, 167, 83, 41, 157, 125, 72, 51, 57, 216, 8, 9, 161, 216, 5, 83, 189, 164, 2, 255, 
+        254, 91, 254, 255, 255, 255, 255, 0, 0, 0, 0
+
+    ]);
+    assert!(bool::from(res_option.is_some()));
 
     // modulus is invalid
-    assert!(bool::from(
-        Scalar::from_bytes(&[
-            1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115
-        ])
-        .is_none()
-    ));
+    // Test 5
+    res_option = Scalar::from_bytes(&[
+        // 1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
+        // 216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115 //little endian (old impl)
+        115, 237, 167, 83, 41, 157, 125, 72, 51, 57, 216, 8, 9, 161, 216, 5, 83, 189, 164, 2, 255, 
+        254, 91, 254, 255, 255, 255, 255, 0, 0, 0, 1
+
+    ]);
+    assert!(bool::from(res_option.is_none()));
 
     // Anything larger than the modulus is invalid
-    assert!(bool::from(
-        Scalar::from_bytes(&[
-            2, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115
-        ])
-        .is_none()
-    ));
-    assert!(bool::from(
-        Scalar::from_bytes(&[
-            1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 58, 51, 72, 125, 157, 41, 83, 167, 237, 115
-        ])
-        .is_none()
-    ));
-    assert!(bool::from(
-        Scalar::from_bytes(&[
-            1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 116
-        ])
-        .is_none()
-    ));
+    // Test 6
+    res_option = Scalar::from_bytes(&[
+        // 2, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
+        // 216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115 //little endian (old impl)
+        115, 237, 167, 83, 41, 157, 125, 72, 51, 57, 216, 8, 9, 161, 216, 5, 83, 189, 164, 2, 255, 
+        254, 91, 254, 255, 255, 255, 255, 0, 0, 0, 2
+
+    ]);
+    assert!(bool::from(res_option.is_none()));
+
+    // Test 7
+    res_option = Scalar::from_bytes(&[
+        // 1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
+        // 216, 58, 51, 72, 125, 157, 41, 83, 167, 237, 115 //little endian (old impl)
+        115, 237, 167, 83, 41, 157, 125, 72, 51, 58, 216, 8, 9, 161, 216, 5, 83, 189, 164, 2, 255, 
+        254, 91, 254, 255, 255, 255, 255, 0, 0, 0, 1
+
+    ]);
+    assert!(bool::from(res_option.is_none()));
+
+    // Test 8
+    res_option = Scalar::from_bytes(&[
+        // 1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
+        // 216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 116 //little endian (old impl)
+        116, 237, 167, 83, 41, 157, 125, 72, 51, 57, 216, 8, 9, 161, 216, 5, 83, 189, 164, 2, 255, 
+        254, 91, 254, 255, 255, 255, 255, 0, 0, 0, 1
+
+    ]);
+    assert!(bool::from(res_option.is_none()));
 }
 
 #[test]
 fn test_from_u512_zero() {
-    assert_eq!(
-        Scalar::zero(),
-        Scalar::from_u512([
-            MODULUS.0[0],
-            MODULUS.0[1],
-            MODULUS.0[2],
-            MODULUS.0[3],
-            0,
-            0,
-            0,
-            0
-        ])
-    );
+    let res = Scalar::from_u512([
+        // MODULUS.0[0],
+        // MODULUS.0[1],
+        // MODULUS.0[2],
+        // MODULUS.0[3],
+        // 0,
+        // 0,
+        // 0,
+        // 0    // little endian (old impl)
+        0,
+        0,
+        0,
+        0,
+        MODULUS.0[3],
+        MODULUS.0[2],
+        MODULUS.0[1],
+        MODULUS.0[0]
+    ]);
+    let expected = Scalar::zero();
+
+    assert_eq!(res, expected);
 }
 
 #[test]
 fn test_from_u512_r() {
-    assert_eq!(R, Scalar::from_u512([1, 0, 0, 0, 0, 0, 0, 0]));
+    // let res = Scalar::from_u512([1, 0, 0, 0, 0, 0, 0, 0]);   // little endian (old impl)
+    let res = Scalar::from_u512([0, 0, 0, 0, 0, 0, 0, 1]);
+    let expected = R;
+    assert_eq!(res, expected);
 }
 
 #[test]
 fn test_from_u512_r2() {
-    assert_eq!(R2, Scalar::from_u512([0, 0, 0, 0, 1, 0, 0, 0]));
+    // let res = Scalar::from_u512([0, 0, 0, 0, 1, 0, 0, 0]);   // little endian (old impl)
+    let res = Scalar::from_u512([0, 0, 0, 1, 0, 0, 0, 0]);
+    let expected = R2;
+    assert_eq!(res, expected);
 }
 
 #[test]
 fn test_from_u512_max() {
     let max_u64 = 0xffff_ffff_ffff_ffff;
-    assert_eq!(
-        R3 - R,
-        Scalar::from_u512([max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64])
-    );
+    let res = Scalar::from_u512([max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64]);
+    let expected = R3 - R;
+    assert_eq!(res, expected);
 }
 
 #[test]
 fn test_from_bytes_wide_r2() {
-    assert_eq!(
-        R2,
-        Scalar::from_bytes_wide(&[
-            254, 255, 255, 255, 1, 0, 0, 0, 2, 72, 3, 0, 250, 183, 132, 88, 245, 79, 188, 236, 239,
-            79, 140, 153, 111, 5, 197, 172, 89, 177, 36, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ])
-    );
+    let res = Scalar::from_bytes_wide(&[
+        // 254, 255, 255, 255, 1, 0, 0, 0, 2, 72, 3, 0, 250, 183, 132, 88, 245, 79, 188, 236, 239,
+        // 79, 140, 153, 111, 5, 197, 172, 89, 177, 36, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        // 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  // little endian (old impl)
+
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+        0, 0, 0, 24, 36, 177, 89, 172, 197, 5, 111, 153, 140, 79, 239, 236, 188, 79, 245, 88, 
+        132, 183, 250, 0, 3, 72, 2, 0, 0, 0, 1, 255, 255, 255, 254
+    ]);
+    let expected = R2;
+    assert_eq!(res, expected);
 }
 
 #[test]
 fn test_from_bytes_wide_negative_one() {
-    assert_eq!(
-        -&Scalar::one(),
-        Scalar::from_bytes_wide(&[
-            0, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ])
-    );
+    let res = Scalar::from_bytes_wide(&[
+        // 0, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
+        // 216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        // 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0   // little endian (old impl)
+        
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 115, 237, 167, 83, 41, 157, 125, 72, 51, 57, 216, 8, 9, 161, 216, 5, 83, 189, 
+        164, 2, 255, 254, 91, 254, 255, 255, 255, 255, 0, 0, 0, 0
+    ]);
+    let expected = -&Scalar::one();
+    assert_eq!(res, expected);
 }
 
 #[test]
 fn test_from_bytes_wide_maximum() {
-    assert_eq!(
-        Scalar([
-            0xc62c_1805_439b_73b1,
-            0xc2b9_551e_8ced_218e,
-            0xda44_ec81_daf9_a422,
-            0x5605_aa60_1c16_2e79,
-        ]),
-        Scalar::from_bytes_wide(&[0xff; 64])
-    );
+    let res = Scalar::from_bytes_wide(&[0xff; 64]);
+    let expected = Scalar([
+        0xc62c_1805_439b_73b1,
+        0xc2b9_551e_8ced_218e,
+        0xda44_ec81_daf9_a422,
+        0x5605_aa60_1c16_2e79,
+    ]);
+    // let debug_str = format!("{:?}", res);
+    assert_eq!(res, expected);
 }
 
 #[test]
@@ -1374,6 +1436,22 @@ fn test_multiplication() {
 
         cur.add_assign(&LARGEST);
     }
+}
+
+#[test]
+fn test_multiplication2() {
+    let mut tmp = LARGEST;
+    tmp.add_assign(&LARGEST);
+    let expected = tmp;
+    let mut a = Scalar::one();
+    let mut b = Scalar::one();
+    a.add_assign(&b);
+    let mut c = a;
+    let mut tmp2 = LARGEST;
+    tmp2 *= &c;
+    let res = tmp2;
+
+    assert_eq!(res, expected);
 }
 
 #[test]
