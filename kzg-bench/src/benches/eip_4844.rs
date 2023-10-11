@@ -16,10 +16,10 @@ pub fn bench_eip_4844<
     TKZGSettings: KZGSettings<TFr, TG1, TG2, TFFTSettings, TPoly>,
 >(
     c: &mut Criterion,
-    load_trusted_setup: &dyn Fn(&str) -> TKZGSettings,
-    blob_to_kzg_commitment: &dyn Fn(&[TFr], &TKZGSettings) -> TG1,
+    load_trusted_setup: &dyn Fn(&str) -> Result<TKZGSettings, String>,
+    blob_to_kzg_commitment: &dyn Fn(&[TFr], &TKZGSettings) -> Result<TG1, String>,
     bytes_to_blob: &dyn Fn(&[u8]) -> Result<Vec<TFr>, String>,
-    compute_kzg_proof: &dyn Fn(&[TFr], &TFr, &TKZGSettings) -> (TG1, TFr),
+    compute_kzg_proof: &dyn Fn(&[TFr], &TFr, &TKZGSettings) -> Result<(TG1, TFr), String>,
     verify_kzg_proof: &dyn Fn(&TG1, &TFr, &TFr, &TG1, &TKZGSettings) -> Result<bool, String>,
     compute_blob_kzg_proof: &dyn Fn(&[TFr], &TG1, &TKZGSettings) -> Result<TG1, String>,
     verify_blob_kzg_proof: &dyn Fn(&[TFr], &TG1, &TG1, &TKZGSettings) -> Result<bool, String>,
@@ -31,7 +31,7 @@ pub fn bench_eip_4844<
     ) -> Result<bool, String>,
 ) {
     set_current_dir(env!("CARGO_MANIFEST_DIR")).unwrap();
-    let ts = load_trusted_setup(TRUSTED_SETUP_PATH);
+    let ts = load_trusted_setup(TRUSTED_SETUP_PATH).unwrap();
     let mut rng = rand::thread_rng();
 
     const MAX_COUNT: usize = 64;
@@ -45,7 +45,7 @@ pub fn bench_eip_4844<
 
     let commitments: Vec<TG1> = blobs
         .iter()
-        .map(|blob| blob_to_kzg_commitment(blob, &ts))
+        .map(|blob| blob_to_kzg_commitment(blob, &ts).unwrap())
         .collect();
 
     let proofs: Vec<TG1> = blobs
