@@ -3,9 +3,11 @@ use crate::consts::{G1_GENERATOR, G2_GENERATOR};
 use crate::kzg_types::ZFr;
 use crate::kzg_types::{ZFr as BlstFr, ZG1, ZG2};
 use crate::poly::PolyData;
-use bls12_381::{
-    multi_miller_loop, Fp12 as ZFp12, G1Affine, G2Affine, G2Prepared, MillerLoopResult,
-};
+// use bls12_381::{
+//     multi_miller_loop, Fp12 as ZFp12, G1Affine, G2Affine, G2Prepared, MillerLoopResult,
+// };
+// NOTE: unfinished imports
+use pairing_ce::bls12_381::{Fq12 as ZFp12, G1Affine, G2Affine, G2Prepared};
 use kzg::eip_4844::hash_to_bls_field;
 use kzg::{Fr as FrTrait, G1Mul, G2Mul};
 use std::ops::{Add, Neg};

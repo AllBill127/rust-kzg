@@ -6,7 +6,9 @@ edition = "2021"
 [dependencies]
 blst = {'git' = 'https://github.com/supranational/blst.git'}
 kzg = { path = "../kzg", default-features = false }
-bls12_381 = { path = "../zkcrypto/bls12_381" }
+#bls12_381 = { path = "../zkcrypto/bls12_381" }
+#pairing_ce = { path = "../zkcrypto/pairing_ce-sgx-master/pairing_ce-sgx-master" }
+pairing_ce = "0.28.5"
 ff = { version = "0.13", features = ["derive"] }
 hex = "0.4.3"
 rand = { version = "0.8.5", optional = true }

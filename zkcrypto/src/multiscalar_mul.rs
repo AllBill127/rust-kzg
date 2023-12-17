@@ -4,8 +4,8 @@
 // use alloc::vec::*;
 
 use crate::kzg_types::{ZFr, ZG1};
-use bls12_381::{G1Projective, Scalar};
-
+// use bls12_381::{G1Projective, Scalar};
+use pairing_ce::bls12_381::{G1, Fr};
 #[cfg(feature = "std")]
 pub fn divn(mut scalar: Scalar, mut n: u32) -> Scalar {
     if n >= 256 {

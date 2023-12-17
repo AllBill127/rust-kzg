@@ -1,5 +1,9 @@
 use crate::kzg_types::{ZG1, ZG2};
-use bls12_381::{Fp as ZFp, Fp2 as ZFp2, G1Projective, G2Projective};
+// use bls12_381::{Fp as ZFp, Fp2 as ZFp2, G1Projective, G2Projective};
+// NOTE: not fixed
+use pairing_ce::bls12_381::{Fq as ZFp, Fq2 as ZFp2, G1 as G1Projective, G2 as G2Projective};
+use pairing_ce::ff::Field;
+
 pub const SCALE_FACTOR: u64 = 5;
 pub const NUM_ROOTS: usize = 32;
 #[rustfmt::skip]

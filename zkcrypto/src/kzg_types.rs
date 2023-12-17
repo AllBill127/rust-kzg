@@ -11,9 +11,12 @@ use crate::utils::{
     blst_fr_into_pc_fr, blst_p1_into_pc_g1projective, blst_p2_into_pc_g2projective,
     pc_fr_into_blst_fr, pc_g1projective_into_blst_p1, pc_g2projective_into_blst_p2,
 };
-use bls12_381::{G1Affine, G1Projective, G2Affine, G2Projective, Scalar, MODULUS, R2};
+// use bls12_381::{G1Affine, G1Projective, G2Affine, G2Projective, Scalar, MODULUS, R2};
+use pairing_ce::bls12_381::{G1Affine, G1 as G1Projective, G2Affine, G2 as G2Projective};
+use pairing_ce::bls12_381::{Fr as Scalar, FrRepr};
+
 use blst::{blst_fr, blst_p1};
-use ff::Field;
+// use ff::Field;   // imported below from pairing_ce::ff
 use kzg::common_utils::reverse_bit_order;
 use kzg::eip_4844::{BYTES_PER_FIELD_ELEMENT, BYTES_PER_G1, BYTES_PER_G2};
 use kzg::{
@@ -23,6 +26,8 @@ use std::ops::{Mul, Sub};
 
 use ff::derive::sbb;
 use subtle::{ConstantTimeEq, CtOption};
+use pairing_ce::{CurveProjective, GenericCurveProjective};
+use pairing_ce::ff::{Field, SqrtField};
 
 fn to_scalar(zfr: &ZFr) -> Scalar {
     zfr.fr
@@ -64,7 +69,8 @@ impl ZFr {
 impl KzgFr for ZFr {
     fn null() -> Self {
         Self {
-            fr: Scalar([u64::MAX, u64::MAX, u64::MAX, u64::MAX]),
+            // fr: Scalar([u64::MAX, u64::MAX, u64::MAX, u64::MAX]),
+            fr: Scalar::zero(),
         }
     }
     fn zero() -> Self {
@@ -82,6 +88,7 @@ impl KzgFr for ZFr {
         Self { fr: rusult }
     }
     #[allow(clippy::bind_instead_of_map)]
+    // rewrite function BE format referencing pairing_ce function
     fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
         bytes
             .try_into()
@@ -93,7 +100,7 @@ impl KzgFr for ZFr {
                 )
             })
             .and_then(|bytes: &[u8; BYTES_PER_FIELD_ELEMENT]| {
-                let mut tmp = Scalar([0, 0, 0, 0]);
+                let mut tmp = Scalar(FrRepr([0, 0, 0, 0]));
 
                 tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
                 tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
@@ -121,6 +128,8 @@ impl KzgFr for ZFr {
                 Ok(Self { fr: tmp2 })
             })
     }
+
+    // rewrite function BE format referencing pairing_ce function
     fn from_bytes_unchecked(bytes: &[u8]) -> Result<Self, String> {
         bytes
             .try_into()
@@ -167,9 +176,10 @@ impl KzgFr for ZFr {
         }
     }
 
+    // NOTE: untested
     fn from_u64(val: u64) -> Self {
         Self {
-            fr: Scalar::from(val),
+            fr: Scalar::try_from(val).unwrap(),
         }
     }
 
@@ -204,52 +214,79 @@ impl KzgFr for ZFr {
         ]
     }
 
+    // Note: untested
     fn is_one(&self) -> bool {
-        self.fr.ct_eq(&ZFr::one().fr).unwrap_u8() == 1
+        self.fr.eq(&ZFr::one().fr).unwrap_u8() == 1
+        // self.fr.ct_eq(&ZFr::one().fr).unwrap_u8() == 1
     }
 
     fn is_zero(&self) -> bool {
         self.fr.is_zero().unwrap_u8() == 1
     }
 
+    // NOTE: untested
     fn is_null(&self) -> bool {
-        self.fr.ct_eq(&ZFr::null().fr).unwrap_u8() == 1
+        self.fr.eq(&ZFr::null().fr).unwrap_u8() == 1
+        // self.fr.ct_eq(&ZFr::null().fr).unwrap_u8() == 1
     }
 
+    // NOTE: untested
     fn sqr(&self) -> Self {
         Self {
-            fr: self.fr.square(),
+            fr: self.fr.sqrt().unwrap(),
         }
     }
 
+    // NOTE: untested
     fn mul(&self, b: &Self) -> Self {
-        Self {
-            fr: Scalar::mul(&to_scalar(self), &to_scalar(b)),
-        }
+        let mut c = *self;
+        c.fr.mul_assign(&b.fr);
+        // Self {
+        //     fr: Scalar::mul(&to_scalar(self), &to_scalar(b)),
+        // }
+        c
     }
 
+    // NOTE: untested
     fn add(&self, b: &Self) -> Self {
-        Self { fr: self.fr + b.fr }
+        let mut c = *self;
+        c.fr.add_assign(&b.fr);
+        // Self { fr: self.fr + b.fr }
+        c
     }
 
+    // NOTE: untested
     fn sub(&self, b: &Self) -> Self {
-        Self { fr: self.fr - b.fr }
+        let mut c = *self;
+        c.fr.sub_assign(&b.fr);
+        // Self { fr: self.fr - b.fr }
+        c
     }
 
+    // NOTE: untested
     fn eucl_inverse(&self) -> Self {
-        Self {
-            fr: self.fr.invert().unwrap(),
-        }
+        self.fr.inverse().unwrap();
+        Self
+        // Self {
+        //     fr: self.fr.invert().unwrap(),
+        // }
     }
 
+    // NOTE: untested
     fn negate(&self) -> Self {
-        Self { fr: self.fr.neg() }
+        let mut c = *self;
+        c.fr.negate();
+        // Self { fr: self.fr.neg() }
+        c
     }
 
+    // NOTE: untested
     fn inverse(&self) -> Self {
-        Self {
-            fr: self.fr.invert().unwrap(),
-        }
+        self.fr.inverse().unwrap();
+        Self
+        // Self {
+        //     fr: self.fr.invert().unwrap(),
+        // }
     }
 
     fn pow(&self, n: usize) -> Self {
@@ -339,11 +376,15 @@ impl G1 for ZG1 {
         G1_NEGATIVE_GENERATOR
     }
 
+    // NOTE: untested
     #[cfg(feature = "rand")]
     fn rand() -> Self {
         let mut rng = rand::thread_rng();
+        // Self {
+        //     proj: G1Projective::random(&mut rng),
+        // }
         Self {
-            proj: G1Projective::random(&mut rng),
+            proj: G1Projective::rand(&mut rng)
         }
     }
 
@@ -376,46 +417,54 @@ impl G1 for ZG1 {
         let g1_affine = G1Affine::from(self.proj);
         g1_affine.to_compressed()
     }
-    //zyme
+
+    // NOTE: untested
     fn add_or_dbl(&mut self, b: &Self) -> Self {
-        Self {
-            proj: self.proj + b.proj,
-        }
+        self.proj.double();
+        Self
     }
+
+    // NOTE: unchanged, should not work
     fn is_inf(&self) -> bool {
         bool::from(self.proj.is_identity())
     }
+    // NOTE: unchanged, should not work
     fn is_valid(&self) -> bool {
         bool::from(self.proj.is_on_curve())
     }
 
+    // NOTE: untested
     fn dbl(&self) -> Self {
-        Self {
-            proj: self.proj.double(),
-        }
+        self.proj.doube();
+        Self
     }
+
+    // NOTE: untested
     fn add(&self, b: &Self) -> Self {
-        Self {
-            proj: self.proj + b.proj,
-        }
+        let mut c = *self;
+        c.proj.add_assign(&b.proj);
+        c
     }
 
+    // NOTE: untested
     fn sub(&self, b: &Self) -> Self {
-        Self {
-            proj: self.proj.sub(&b.proj),
-        }
+        let mut c = *self;
+        c.proj.sub_assign(&b.proj);
+        c
     }
 
+    // NOTE: unchanged, untested
     fn equals(&self, b: &Self) -> bool {
         self.proj.eq(&b.proj)
     }
 }
 
 impl G1Mul<ZFr> for ZG1 {
+    // NOTE: untested
     fn mul(&self, b: &ZFr) -> Self {
-        Self {
-            proj: self.proj.mul(b.fr),
-        }
+        let mut c = *self;
+        c.proj.mul_assign(&b.fr);
+        c
     }
 
     fn g1_lincomb(points: &[Self], scalars: &[ZFr], len: usize) -> Self {
@@ -481,22 +530,25 @@ impl G2 for ZG2 {
         g2_affine.to_compressed()
     }
 
+    // NOTE: untested
     fn add_or_dbl(&mut self, b: &Self) -> Self {
-        Self {
-            proj: self.proj + b.proj,
-        }
+        self.proj.add_assign(&b.proj);
+        Self
     }
 
+    // NOTE: untested
     fn dbl(&self) -> Self {
-        Self {
-            proj: self.proj.double(),
-        }
+        self.proj.doube();
+        Self
     }
 
+    // Note: untested
     fn sub(&self, b: &Self) -> Self {
-        Self {
-            proj: self.proj - b.proj,
-        }
+        self.proj.sub_assign(&b.proj);
+        // Self {
+        //     proj: self.proj - b.proj,
+        // }
+        Self
     }
 
     fn equals(&self, b: &Self) -> bool {
@@ -505,11 +557,14 @@ impl G2 for ZG2 {
 }
 
 impl G2Mul<ZFr> for ZG2 {
+    // Note: untested
     fn mul(&self, b: &ZFr) -> Self {
         // FIXME: Is this right?
-        Self {
-            proj: self.proj.mul(b.fr),
-        }
+        self.proj.mul_assign(&b.fr);
+        // Self {
+        //     proj: self.proj.mul(b.fr),
+        // }
+        Self
     }
 }
 
