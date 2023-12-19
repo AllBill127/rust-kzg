@@ -6,10 +6,11 @@ use crate::poly::PolyData;
 // use bls12_381::{
 //     multi_miller_loop, Fp12 as ZFp12, G1Affine, G2Affine, G2Prepared, MillerLoopResult,
 // };
-use pairing_ce::bls12_381::{Fq12 as ZFp12, G1Affine, G2Affine, G2Prepared, Bls12, Engine, Field};
+use pairing_ce::bls12_381::{Fq12 as ZFp12, G1Affine, G2Affine, G2Prepared, G1Prepared, Bls12};
+use pairing_ce::{CurveProjective, Engine};
+use pairing_ce::ff::Field;
 use kzg::eip_4844::hash_to_bls_field;
 use kzg::{Fr as FrTrait, G1Mul, G2Mul};
-use std::ops::{Add, Neg};
 
 #[derive(Debug, Clone)]
 pub struct FFTSettings {
@@ -85,20 +86,25 @@ pub fn eval_poly(p: &PolyData, x: &ZFr) -> ZFr {
 }
 
 pub fn pairings_verify(a1: &ZG1, a2: &ZG2, b1: &ZG1, b2: &ZG2) -> bool {
-    let a1neg = a1.proj.neg();
+    let mut a1neg = *a1;
+    a1neg.proj.negate();
 
-    let aa1 = G1Affine::from(&a1neg);
+    let aa1 = G1Affine::from(a1neg.proj);
     let bb1 = G1Affine::from(b1.proj);
     let aa2 = G2Affine::from(a2.proj);
     let bb2 = G2Affine::from(b2.proj);
 
-    let aa2_prepared = G2Prepared::try_from(aa2).unwrap();
-    let bb2_prepared = G2Prepared::try_from(bb2).unwrap();
+    let aa1_prepared = G1Prepared::from_affine(aa1);
+    let bb1_prepared = G1Prepared::from_affine(bb1);
+    let aa2_prepared = G2Prepared::from_affine(aa2);
+    let bb2_prepared = G2Prepared::from_affine(bb2);
 
-    let loop0 = Bls12::miller_loop(&[(&aa1, &aa2_prepared)]);
-    let loop1 = Bls12::miller_loop(&[(&bb1, &bb2_prepared)]);
+    let loop0 = Bls12::miller_loop(&[(&aa1_prepared, &aa2_prepared)]);
+    let loop1 = Bls12::miller_loop(&[(&bb1_prepared, &bb2_prepared)]);
 
-    let gt_point = loop0.add(loop1);
+    // let gt_point = loop0.add(loop1);
+    let mut gt_point = loop0;
+    gt_point.add_assign(&loop1);
 
     let new_point = Bls12::final_exponentiation(&gt_point);
 
