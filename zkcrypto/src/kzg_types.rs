@@ -1,43 +1,41 @@
-use crate::consts::{
-    G1_GENERATOR, G1_IDENTITY, G1_NEGATIVE_GENERATOR, G2_GENERATOR, G2_NEGATIVE_GENERATOR,
-    SCALE2_ROOT_OF_UNITY,
-};
+use crate::consts::{G1_GENERATOR, G1_IDENTITY, G1_NEGATIVE_GENERATOR, G2_GENERATOR, G2_NEGATIVE_GENERATOR,
+                    MODULUS, R2, SCALE2_ROOT_OF_UNITY};
 use crate::fft_g1::g1_linear_combination;
 use crate::kzg_proofs::{
     expand_root_of_unity, pairings_verify, FFTSettings as ZFFTSettings, KZGSettings as ZKZGSettings,
 };
 use crate::poly::PolyData;
-use crate::utils::{
-    blst_fr_into_pc_fr, blst_p1_into_pc_g1projective, blst_p2_into_pc_g2projective,
-    pc_fr_into_blst_fr, pc_g1projective_into_blst_p1, pc_g2projective_into_blst_p2,
-};
+use crate::utils::{blst_fr_into_pc_fr, blst_p1_into_pc_g1projective, blst_p2_into_pc_g2projective,
+                   montgomery_reduce, pc_fr_into_blst_fr, pc_g1projective_into_blst_p1, pc_g2projective_into_blst_p2};
 // use bls12_381::{G1Affine, G1Projective, G2Affine, G2Projective, Scalar, MODULUS, R2};
-use pairing_ce::bls12_381::{G1Affine, G1 as G1Projective, G2Affine, G2 as G2Projective};
-use pairing_ce::bls12_381::{Fr as Scalar, FrRepr};
+use pairing_ce::bls12_381::{G1Affine, G1Prepared, G1 as G1Projective, G2Affine, G2 as G2Projective, Fr as Scalar};
+use pairing_ce::bls12_381::fr::{FrRepr};
+use pairing_ce::ff::{Field, PrimeField, PrimeFieldRepr, SqrtField};
 
 use blst::{blst_fr, blst_p1};
-// use ff::Field;   // imported below from pairing_ce::ff
+// use ff::Field;   // imported from pairing_ce::ff
 use kzg::common_utils::reverse_bit_order;
 use kzg::eip_4844::{BYTES_PER_FIELD_ELEMENT, BYTES_PER_G1, BYTES_PER_G2};
 use kzg::{
     FFTFr, FFTSettings, Fr as KzgFr, G1Mul, G2Mul, KZGSettings, PairingVerify, Poly, G1, G2,
 };
 use std::ops::{Mul, Sub};
+use ff::derive::bitvec::macros::internal::funty::Fundamental;
 
 use ff::derive::sbb;
 use subtle::{ConstantTimeEq, CtOption};
 use pairing_ce::{CurveProjective, GenericCurveProjective};
-use pairing_ce::ff::{Field, SqrtField};
+use rand::Rng;
 
 fn to_scalar(zfr: &ZFr) -> Scalar {
     zfr.fr
 }
 
 fn bigint_check_mod_256(a: &[u64; 4]) -> bool {
-    let (_, overflow) = a[0].overflowing_sub(MODULUS.0[0]);
-    let (_, overflow) = a[1].overflowing_sub(MODULUS.0[1] + overflow as u64);
-    let (_, overflow) = a[2].overflowing_sub(MODULUS.0[2] + overflow as u64);
-    let (_, overflow) = a[3].overflowing_sub(MODULUS.0[3] + overflow as u64);
+    let (_, overflow) = a[0].overflowing_sub(MODULUS.into_repr().0[0]);
+    let (_, overflow) = a[1].overflowing_sub(MODULUS.into_repr().0[1] + overflow as u64);
+    let (_, overflow) = a[2].overflowing_sub(MODULUS.into_repr().0[2] + overflow as u64);
+    let (_, overflow) = a[3].overflowing_sub(MODULUS.into_repr().0[3] + overflow as u64);
     overflow
 }
 
@@ -83,10 +81,15 @@ impl KzgFr for ZFr {
 
     #[cfg(feature = "rand")]
     fn rand() -> Self {
-        let rng = rand::thread_rng();
-        let rusult = ff::Field::random(rng);
-        Self { fr: rusult }
+        let tmp: i64 = rand::thread_rng().gen();
+        let result = FrRepr::from(tmp.as_u64());
+        Self { fr: Scalar::from_repr(result).unwrap() }
     }
+    // fn rand() -> Self {
+    //     let rng = rand::thread_rng();
+    //     let result = ff::Field::random(rng);
+    //     Self { fr: result }
+    // }
     #[allow(clippy::bind_instead_of_map)]
     // rewrite function BE format referencing pairing_ce function
     fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
@@ -100,7 +103,7 @@ impl KzgFr for ZFr {
                 )
             })
             .and_then(|bytes: &[u8; BYTES_PER_FIELD_ELEMENT]| {
-                let mut tmp = Scalar(FrRepr([0, 0, 0, 0]));
+                let mut tmp = FrRepr([0, 0, 0, 0]);
 
                 tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
                 tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
@@ -108,11 +111,12 @@ impl KzgFr for ZFr {
                 tmp.0[3] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
 
                 // Try to subtract the modulus
-                let (_, borrow) = sbb(tmp.0[0], MODULUS.0[0], 0);
-                let (_, borrow) = sbb(tmp.0[1], MODULUS.0[1], borrow);
-                let (_, borrow) = sbb(tmp.0[2], MODULUS.0[2], borrow);
-                let (_, _borrow) = sbb(tmp.0[3], MODULUS.0[3], borrow);
-                let mut tmp2 = Scalar::default();
+                let (_, borrow) = sbb(tmp.0[0], MODULUS.into_repr().0[0], 0);
+                let (_, borrow) = sbb(tmp.0[1], MODULUS.into_repr().0[1], borrow);
+                let (_, borrow) = sbb(tmp.0[2], MODULUS.into_repr().0[2], borrow);
+                let (_, _borrow) = sbb(tmp.0[3], MODULUS.into_repr().0[3], borrow);
+
+                let mut tmp2 = FrRepr::default();
 
                 tmp2.0[0] = tmp.0[3];
                 tmp2.0[1] = tmp.0[2];
@@ -124,8 +128,9 @@ impl KzgFr for ZFr {
                     return Err("Invalid scalar".to_string());
                 }
 
-                tmp2 *= &R2;
-                Ok(Self { fr: tmp2 })
+                let mut res = Scalar::from_repr(tmp2).unwrap();
+                res.mul_assign(&R2);
+                Ok(Self { fr: res })
             })
     }
 
@@ -141,7 +146,8 @@ impl KzgFr for ZFr {
                 )
             })
             .map(|bytes: &[u8; BYTES_PER_FIELD_ELEMENT]| {
-                let mut tmp = Scalar([0, 0, 0, 0]);
+                // let mut tmp = Scalar([0, 0, 0, 0]);
+                let mut tmp = FrRepr([0, 0, 0, 0]);
 
                 tmp.0[0] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap());
                 tmp.0[1] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap());
@@ -149,19 +155,22 @@ impl KzgFr for ZFr {
                 tmp.0[3] = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap());
 
                 // Try to subtract the modulus
-                let (_, borrow) = sbb(tmp.0[0], MODULUS.0[0], 0);
-                let (_, borrow) = sbb(tmp.0[1], MODULUS.0[1], borrow);
-                let (_, borrow) = sbb(tmp.0[2], MODULUS.0[2], borrow);
-                let (_, _borrow) = sbb(tmp.0[3], MODULUS.0[3], borrow);
-                let mut tmp2 = Scalar::default();
+                let (_, borrow) = sbb(tmp.0[0], MODULUS.into_repr().0[0], 0);
+                let (_, borrow) = sbb(tmp.0[1], MODULUS.into_repr().0[1], borrow);
+                let (_, borrow) = sbb(tmp.0[2], MODULUS.into_repr().0[2], borrow);
+                let (_, _borrow) = sbb(tmp.0[3], MODULUS.into_repr().0[3], borrow);
+
+                // let mut tmp2 = Scalar::default();
+                let mut tmp2 = FrRepr::default();
 
                 tmp2.0[0] = tmp.0[3];
                 tmp2.0[1] = tmp.0[2];
                 tmp2.0[2] = tmp.0[1];
                 tmp2.0[3] = tmp.0[0];
 
-                tmp2 *= &R2;
-                Self { fr: tmp2 }
+                let mut res = Scalar::from_repr(tmp2).unwrap();
+                res.mul_assign(&R2);
+                Self { fr: res }
             })
     }
 
@@ -170,36 +179,42 @@ impl KzgFr for ZFr {
         Self::from_bytes(&bytes)
     }
 
+    // NOTE: untested
     fn from_u64_arr(u: &[u64; 4]) -> Self {
+        let tmp = FrRepr(*u);
         Self {
-            fr: Scalar::from_raw(*u),
+            // fr: Scalar::from_raw(*u),
+            fr: Scalar::from_repr(tmp).unwrap(),
         }
     }
 
     // NOTE: untested
     fn from_u64(val: u64) -> Self {
+        let tmp = FrRepr::from(val);
         Self {
-            fr: Scalar::try_from(val).unwrap(),
+            // fr: Scalar::try_from(val).unwrap(),
+            fr: Scalar::from_repr(tmp).unwrap(),
         }
     }
 
     fn to_bytes(&self) -> [u8; 32] {
+        // let scalar = self.fr;
         let scalar = self.fr;
-        let tmp = Scalar::montgomery_reduce(
-            scalar.0[0],
-            scalar.0[1],
-            scalar.0[2],
-            scalar.0[3],
+        let tmp = montgomery_reduce(
+            scalar.into_repr().0[0],
+            scalar.into_repr().0[1],
+            scalar.into_repr().0[2],
+            scalar.into_repr().0[3],
             0,
             0,
             0,
             0,
         );
         let mut res = [0; 32];
-        res[0..8].copy_from_slice(&tmp.0[3].to_be_bytes());
-        res[8..16].copy_from_slice(&tmp.0[2].to_be_bytes());
-        res[16..24].copy_from_slice(&tmp.0[1].to_be_bytes());
-        res[24..32].copy_from_slice(&tmp.0[0].to_be_bytes());
+        res[0..8].copy_from_slice(&tmp.into_repr().0[3].to_be_bytes());
+        res[8..16].copy_from_slice(&tmp.into_repr().0[2].to_be_bytes());
+        res[16..24].copy_from_slice(&tmp.into_repr().0[1].to_be_bytes());
+        res[24..32].copy_from_slice(&tmp.into_repr().0[0].to_be_bytes());
         res
     }
 
@@ -216,17 +231,17 @@ impl KzgFr for ZFr {
 
     // Note: untested
     fn is_one(&self) -> bool {
-        self.fr.eq(&ZFr::one().fr).unwrap_u8() == 1
+        self.fr.eq(&ZFr::one().fr) == true
         // self.fr.ct_eq(&ZFr::one().fr).unwrap_u8() == 1
     }
 
     fn is_zero(&self) -> bool {
-        self.fr.is_zero().unwrap_u8() == 1
+        self.fr.is_zero() == true
     }
 
     // NOTE: untested
     fn is_null(&self) -> bool {
-        self.fr.eq(&ZFr::null().fr).unwrap_u8() == 1
+        self.fr.eq(&ZFr::null().fr) == true
         // self.fr.ct_eq(&ZFr::null().fr).unwrap_u8() == 1
     }
 
@@ -265,8 +280,9 @@ impl KzgFr for ZFr {
 
     // NOTE: untested
     fn eucl_inverse(&self) -> Self {
-        self.fr.inverse().unwrap();
-        Self
+        Self {
+            fr: self.fr.inverse().unwrap(),
+        }
         // Self {
         //     fr: self.fr.invert().unwrap(),
         // }
@@ -282,8 +298,9 @@ impl KzgFr for ZFr {
 
     // NOTE: untested
     fn inverse(&self) -> Self {
-        self.fr.inverse().unwrap();
-        Self
+        Self {
+            fr: self.fr.inverse().unwrap(),
+        }
         // Self {
         //     fr: self.fr.invert().unwrap(),
         // }
@@ -322,9 +339,16 @@ impl KzgFr for ZFr {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct ZG1 {
     pub proj: G1Projective,
+}
+
+// NOTE: random decision to make default a zero
+impl Default for ZG1 {
+    fn default() -> Self {
+        Self { proj: <pairing_ce::bls12_381::G1 as CurveProjective>::zero(), }
+    }
 }
 
 impl ZG1 {
@@ -343,7 +367,7 @@ impl ZG1 {
 
     fn affine_to_projective(p: G1Affine) -> Self {
         Self {
-            proj: G1Projective::from(&p),
+            proj: G1Projective::from(p),
         }
     }
     pub fn converter(points: &[ZG1]) -> Vec<G1Projective> {
@@ -383,9 +407,13 @@ impl G1 for ZG1 {
         // Self {
         //     proj: G1Projective::random(&mut rng),
         // }
-        Self {
-            proj: G1Projective::rand(&mut rng)
-        }
+
+        let tmp: i64 = rand::thread_rng().gen();
+        let result = FrRepr::from(tmp.as_u64());
+        Self { proj: G1Projective::rand(&mut rng) }
+        // Self {
+        //     proj: G1Projective::from(rng_affine)
+        // }
     }
 
     #[allow(clippy::bind_instead_of_map)]
