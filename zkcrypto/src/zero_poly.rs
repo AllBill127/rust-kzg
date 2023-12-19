@@ -5,6 +5,7 @@ use crate::poly::PolyData;
 use kzg::common_utils::next_pow_of_2;
 use kzg::{FFTFr, Fr, ZeroPoly};
 use std::cmp::{min, Ordering};
+use pairing_ce::ff::Field;
 
 pub(crate) fn pad_poly(poly: &PolyData, new_length: usize) -> Result<Vec<BlstFr>, String> {
     if new_length <= poly.coeffs.len() {
@@ -72,7 +73,8 @@ impl ZeroPoly<BlstFr, PolyData> for FFTSettings {
 
             let p_eval = self.fft_fr(&p_partial, false).unwrap();
             for j in 0..len_out {
-                mul_eval_ps[j].fr *= p_eval[j].fr;
+                // mul_eval_ps[j].fr *= p_eval[j].fr;
+                mul_eval_ps[j].fr.mul_assign(&p_eval[j].fr);
             }
         }
 
