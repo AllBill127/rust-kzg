@@ -2,6 +2,7 @@ use crate::kzg_proofs::FFTSettings;
 use crate::kzg_types::ZFr as BlstFr;
 use kzg::{Fr, DAS};
 use std::cmp::Ordering;
+use pairing_ce::ff::Field;
 
 impl FFTSettings {
     fn das_fft_extension_stride(&self, ab: &mut [BlstFr], stride: usize) {
@@ -79,7 +80,7 @@ impl DAS<BlstFr> for FFTSettings {
         let invlen = invlen.inverse();
 
         for val in &mut vals {
-            val.fr *= invlen.fr
+            val.fr.mul_assign(&invlen.fr);
         }
 
         Ok(vals)
