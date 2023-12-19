@@ -4,7 +4,7 @@ use crate::kzg_types::{ZFr, ZG1};
 use crate::multiscalar_mul::msm_variable_base;
 use kzg::{Fr as KzgFr, G1Mul};
 use kzg::{FFTG1, G1};
-use std::ops::MulAssign;
+use pairing_ce::CurveProjective;
 
 #[warn(unused_variables)]
 pub fn g1_linear_combination(out: &mut ZG1, points: &[ZG1], scalars: &[ZFr], _len: usize) {
@@ -47,7 +47,7 @@ impl FFTG1<ZG1> for FFTSettings {
             let inv_fr_len = ZFr::from_u64(data.len() as u64).inverse();
             ret[..data.len()]
                 .iter_mut()
-                .for_each(|f| f.proj.mul_assign(&inv_fr_len.fr));
+                .for_each(|f| f.proj.mul_assign(inv_fr_len.fr));
         }
         Ok(ret)
     }
