@@ -6,8 +6,7 @@ use crate::poly::PolyData;
 // use bls12_381::{
 //     multi_miller_loop, Fp12 as ZFp12, G1Affine, G2Affine, G2Prepared, MillerLoopResult,
 // };
-// NOTE: unfinished imports
-use pairing_ce::bls12_381::{Fq12 as ZFp12, G1Affine, G2Affine, G2Prepared};
+use pairing_ce::bls12_381::{Fq12 as ZFp12, G1Affine, G2Affine, G2Prepared, Bls12, Engine, Field};
 use kzg::eip_4844::hash_to_bls_field;
 use kzg::{Fr as FrTrait, G1Mul, G2Mul};
 use std::ops::{Add, Neg};
@@ -93,15 +92,15 @@ pub fn pairings_verify(a1: &ZG1, a2: &ZG2, b1: &ZG1, b2: &ZG2) -> bool {
     let aa2 = G2Affine::from(a2.proj);
     let bb2 = G2Affine::from(b2.proj);
 
-    let aa2_prepared = G2Prepared::from(aa2);
-    let bb2_prepared = G2Prepared::from(bb2);
+    let aa2_prepared = G2Prepared::try_from(aa2).unwrap();
+    let bb2_prepared = G2Prepared::try_from(bb2).unwrap();
 
-    let loop0 = multi_miller_loop(&[(&aa1, &aa2_prepared)]);
-    let loop1 = multi_miller_loop(&[(&bb1, &bb2_prepared)]);
+    let loop0 = Bls12::miller_loop(&[(&aa1, &aa2_prepared)]);
+    let loop1 = Bls12::miller_loop(&[(&bb1, &bb2_prepared)]);
 
     let gt_point = loop0.add(loop1);
 
-    let new_point = MillerLoopResult::final_exponentiation(&gt_point);
+    let new_point = Bls12::final_exponentiation(&gt_point);
 
-    ZFp12::eq(&ZFp12::one(), &new_point.0)
+    ZFp12::eq(&ZFp12::one(), &new_point.unwrap())
 }
