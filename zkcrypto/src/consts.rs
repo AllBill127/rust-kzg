@@ -1,8 +1,9 @@
+use std::clone::Clone;
 use crate::kzg_types::{ZG1, ZG2};
 // use bls12_381::{Fp as ZFp, Fp2 as ZFp2, G1Projective, G2Projective};
 // NOTE: not fixed
-use pairing_ce::bls12_381::{Fq as ZFp, Fq2 as ZFp2, G1 as G1Projective, G2 as G2Projective};
-use pairing_ce::ff::Field;
+use pairing_ce::bls12_381::{Fq as ZFp, Fq2 as ZFp2, G1 as G1Projective, G2 as G2Projective, Fr as Scalar, FrRepr};
+use pairing_ce::ff::{Field, PrimeField};
 
 pub const SCALE_FACTOR: u64 = 5;
 pub const NUM_ROOTS: usize = 32;
@@ -216,3 +217,23 @@ pub const G2_NEGATIVE_GENERATOR: ZG2 = ZG2::from_g2_projective(G2Projective {
         ]),
     },
 });
+
+/// INV = -(q^{-1} mod 2^64) mod 2^64
+pub const INV: u64 = 0xffff_fffe_ffff_ffff;
+
+/// Constant representing the modulus
+/// q = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+pub const MODULUS: Scalar = Scalar::from_repr(FrRepr([
+    0xffff_ffff_0000_0001,
+    0x53bd_a402_fffe_5bfe,
+    0x3339_d808_09a1_d805,
+    0x73ed_a753_299d_7d48,
+])).unwrap();
+
+/// R^2 = 2^512 mod q
+pub const R2: Scalar = Scalar::from_repr(FrRepr([
+    0xc999_e990_f3f2_9c6d,
+    0x2b6c_edcb_8792_5c23,
+    0x05d3_1496_7254_398f,
+    0x0748_d9d9_9f59_ff11,
+])).unwrap();
