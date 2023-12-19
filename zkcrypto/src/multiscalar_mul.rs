@@ -5,16 +5,20 @@
 
 use crate::kzg_types::{ZFr, ZG1};
 // use bls12_381::{G1Projective, Scalar};
-use pairing_ce::bls12_381::{G1, Fr};
+use pairing_ce::bls12_381::{G1 as G1Projective, Fr as Scalar, FrRepr};
+use pairing_ce::CurveProjective;
+use pairing_ce::ff::{Field, PrimeField};
+use crate::utils::montgomery_reduce;
+
 #[cfg(feature = "std")]
 pub fn divn(mut scalar: Scalar, mut n: u32) -> Scalar {
     if n >= 256 {
-        return Scalar::from(0);
+        return Scalar::from_repr(FrRepr::from(0)).unwrap();
     }
 
     while n >= 64 {
         let mut t = 0;
-        for i in scalar.0.iter_mut().rev() {
+        for i in scalar.into_repr().0.iter_mut().rev() {
             core::mem::swap(&mut t, i);
         }
         n -= 64;
@@ -22,7 +26,7 @@ pub fn divn(mut scalar: Scalar, mut n: u32) -> Scalar {
 
     if n > 0 {
         let mut t = 0;
-        for i in scalar.0.iter_mut().rev() {
+        for i in scalar.into_repr().0.iter_mut().rev() {
             let t2 = *i << (64 - n);
             *i >>= n;
             *i |= t;
@@ -54,7 +58,8 @@ pub fn msm_variable_base(points_zg1: &[ZG1], zfrscalars: &[ZFr]) -> G1Projective
     let num_bits = 255usize;
     let fr_one = Scalar::one();
 
-    let zero = G1Projective::identity();
+    // let zero = G1Projective::identity();
+    let zero = G1Projective::zero();
     let window_starts: Vec<_> = (0..num_bits).step_by(c).collect();
 
     #[cfg(feature = "parallel")]
@@ -78,14 +83,14 @@ pub fn msm_variable_base(points_zg1: &[ZG1], zfrscalars: &[ZFr]) -> G1Projective
                     if scalar == fr_one {
                         // We only process unit scalars once in the first window.
                         if w_start == 0 {
-                            res = res.add(base);
+                            res.add_assign(base);
                         }
                     } else {
-                        let mut scalar = Scalar::montgomery_reduce(
-                            scalar.0[0],
-                            scalar.0[1],
-                            scalar.0[2],
-                            scalar.0[3],
+                        let mut scalar = montgomery_reduce(
+                            scalar.into_repr().0[0],
+                            scalar.into_repr().0[1],
+                            scalar.into_repr().0[2],
+                            scalar.into_repr().0[3],
                             0,
                             0,
                             0,
@@ -96,22 +101,21 @@ pub fn msm_variable_base(points_zg1: &[ZG1], zfrscalars: &[ZFr]) -> G1Projective
                         // lower bits.
                         scalar = divn(scalar, w_start as u32);
                         // We mod the remaining bits by the window size.
-                        let scalar = scalar.0[0] % (1 << c);
+                        let scalar = scalar.into_repr().0[0] % (1 << c);
 
                         // If the scalar is non-zero, we update the corresponding
                         // bucket.
                         // (Recall that `buckets` doesn't have a zero bucket.)
                         if scalar != 0 {
-                            buckets[(scalar - 1) as usize] =
-                                buckets[(scalar - 1) as usize].add(base);
+                            buckets[(scalar - 1) as usize].add_assign(base);
                         }
                     }
                 });
 
-            let mut running_sum = G1Projective::identity();
+            let mut running_sum = G1Projective::zero();
             for b in buckets.into_iter().rev() {
-                running_sum += b;
-                res += &running_sum;
+                running_sum.add_assign(&b);
+                res.add_assign(&running_sum);
             }
 
             res
@@ -121,17 +125,18 @@ pub fn msm_variable_base(points_zg1: &[ZG1], zfrscalars: &[ZFr]) -> G1Projective
     // We store the sum for the lowest window.
     let lowest = *window_sums.first().unwrap();
     // We're traversing windows from high to low.
-    window_sums[1..]
+    let mut res = window_sums[1..]
         .iter()
         .rev()
         .fold(zero, |mut total, sum_i| {
-            total += sum_i;
+            total.add_assign(sum_i);
             for _ in 0..c {
-                total = total.double();
+                total.double();
             }
             total
-        })
-        + lowest
+        });
+    res.add_assign(&lowest);
+    res
 }
 
 fn ln_without_floats(a: usize) -> usize {
