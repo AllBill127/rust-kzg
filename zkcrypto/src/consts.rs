@@ -1,8 +1,8 @@
-use std::clone::Clone;
 use crate::kzg_types::{ZG1, ZG2};
 // use bls12_381::{Fp as ZFp, Fp2 as ZFp2, G1Projective, G2Projective};
 // NOTE: not fixed
-use pairing_ce::bls12_381::{Fq as ZFp, Fq2 as ZFp2, G1 as G1Projective, G2 as G2Projective, Fr as Scalar, FrRepr};
+use pairing_ce::bls12_381::{Fq as ZFp, Fq2 as ZFp2, G1 as G1Projective, G2 as G2Projective, Fr as Scalar, FrRepr, FqRepr};
+use pairing_ce::CurveProjective;
 use pairing_ce::ff::{Field, PrimeField};
 
 pub const SCALE_FACTOR: u64 = 5;
@@ -44,179 +44,179 @@ pub const SCALE2_ROOT_OF_UNITY: [[u64; 4]; 32] = [
 ];
 
 /** The G1 generator */
-pub const G1_GENERATOR: ZG1 = ZG1::from_g1_projective(G1Projective {
-    x: ZFp::from_raw_unchecked([
+pub const G1_GENERATOR: ZG1 = ZG1::from_g1_projective(G1Projective::from_xyz_unchecked(
+    ZFp::from_repr(FqRepr([
         0x5cb3_8790_fd53_0c16,
         0x7817_fc67_9976_fff5,
         0x154f_95c7_143b_a1c1,
         0xf0ae_6acd_f3d0_e747,
         0xedce_6ecc_21db_f440,
         0x1201_7741_9e0b_fb75,
-    ]),
-    y: ZFp::from_raw_unchecked([
+    ])).unwrap(),
+    ZFp::from_repr(FqRepr([
         0xbaac_93d5_0ce7_2271,
         0x8c22_631a_7918_fd8e,
         0xdd59_5f13_5707_25ce,
         0x51ac_5829_5040_5194,
         0x0e1c_8c3f_ad00_59c0,
         0x0bbc_3efc_5008_a26a,
-    ]),
-    z: ZFp::from_raw_unchecked([
+    ])).unwrap(),
+    ZFp::from_repr(FqRepr([
         0x7609_0000_0002_fffd,
         0xebf4_000b_c40c_0002,
         0x5f48_9857_53c7_58ba,
         0x77ce_5853_7052_5745,
         0x5c07_1a97_a256_ec6d,
         0x15f6_5ec3_fa80_e493,
-    ]),
-});
+    ])).unwrap(),
+));
 
-pub const G1_NEGATIVE_GENERATOR: ZG1 = ZG1::from_g1_projective(G1Projective {
-    x: ZFp::from_raw_unchecked([
+pub const G1_NEGATIVE_GENERATOR: ZG1 = ZG1::from_g1_projective(G1Projective::from_xyz_unchecked(
+    ZFp::from_repr(FqRepr([
         0x5cb3_8790_fd53_0c16,
         0x7817_fc67_9976_fff5,
         0x154f_95c7_143b_a1c1,
         0xf0ae_6acd_f3d0_e747,
         0xedce_6ecc_21db_f440,
         0x1201_7741_9e0b_fb75,
-    ]),
-    y: ZFp::from_raw_unchecked([
+    ])).unwrap(),
+    ZFp::from_repr(FqRepr([
         0xff52_6c2a_f318_883a,
         0x9289_9ce4_383b_0270,
         0x89d7_738d_9fa9_d055,
         0x12ca_f35b_a344_c12a,
         0x3cff_1b76_964b_5317,
         0x0e44_d2ed_e977_4430,
-    ]),
-    z: ZFp::from_raw_unchecked([
+    ])).unwrap(),
+    ZFp::from_repr(FqRepr([
         0x7609_0000_0002_fffd,
         0xebf4_000b_c40c_0002,
         0x5f48_9857_53c7_58ba,
         0x77ce_5853_7052_5745,
         0x5c07_1a97_a256_ec6d,
         0x15f6_5ec3_fa80_e493,
-    ]),
-});
+    ])).unwrap(),
+));
 #[rustfmt::skip]
-pub const G1_IDENTITY: ZG1 = ZG1::from_g1_projective( G1Projective {
-    x: ZFp::zero(),
-    y: ZFp::one(),
-    z: ZFp::zero(),
-});
+pub const G1_IDENTITY: ZG1 = ZG1::from_g1_projective( G1Projective::from_xyz_unchecked(
+    ZFp::zero(),
+    ZFp::one(),
+    ZFp::zero(),
+));
 
-pub const G2_GENERATOR: ZG2 = ZG2::from_g2_projective(G2Projective {
-    x: ZFp2 {
-        c0: ZFp([
+pub const G2_GENERATOR: ZG2 = ZG2::from_g2_projective(G2Projective::from_xyz_unchecked(
+    ZFp2 {
+        c0: ZFp::from_repr(FqRepr([
             0xf5f28fa202940a10,
             0xb3f5fb2687b4961a,
             0xa1a893b53e2ae580,
             0x9894999d1a3caee9,
             0x6f67b7631863366b,
             0x058191924350bcd7,
-        ]),
-        c1: ZFp([
+        ])).unwrap(),
+        c1: ZFp::from_repr(FqRepr([
             0xa5a9c0759e23f606,
             0xaaa0c59dbccd60c3,
             0x3bb17e18e2867806,
             0x1b1ab6cc8541b367,
             0xc2b6ed0ef2158547,
             0x11922a097360edf3,
-        ]),
+        ])).unwrap(),
     },
-    y: ZFp2 {
-        c0: ZFp([
+    ZFp2 {
+        c0: ZFp::from_repr(FqRepr([
             0x4c730af860494c4a,
             0x597cfa1f5e369c5a,
             0xe7e6856caa0a635a,
             0xbbefb5e96e0d495f,
             0x07d3a975f0ef25a2,
             0x0083fd8e7e80dae5,
-        ]),
-        c1: ZFp([
+        ])).unwrap(),
+        c1: ZFp::from_repr(FqRepr([
             0xadc0fc92df64b05d,
             0x18aa270a2b1461dc,
             0x86adac6a3be4eba0,
             0x79495c4ec93da33a,
             0xe7175850a43ccaed,
             0x0b2bc2a163de1bf2,
-        ]),
+        ])).unwrap(),
     },
-    z: ZFp2 {
-        c0: ZFp([
+    ZFp2 {
+        c0: ZFp::from_repr(FqRepr([
             0x760900000002fffd,
             0xebf4000bc40c0002,
             0x5f48985753c758ba,
             0x77ce585370525745,
             0x5c071a97a256ec6d,
             0x15f65ec3fa80e493,
-        ]),
-        c1: ZFp([
+        ])).unwrap(),
+        c1: ZFp::from_repr(FqRepr([
             0x0000000000000000,
             0x0000000000000000,
             0x0000000000000000,
             0x0000000000000000,
             0x0000000000000000,
             0x0000000000000000,
-        ]),
+        ])).unwrap(),
     },
-});
+));
 
-pub const G2_NEGATIVE_GENERATOR: ZG2 = ZG2::from_g2_projective(G2Projective {
-    x: ZFp2 {
-        c0: ZFp([
+pub const G2_NEGATIVE_GENERATOR: ZG2 = ZG2::from_g2_projective(G2Projective::from_xyz_unchecked(
+    ZFp2 {
+        c0: ZFp::from_repr(FqRepr([
             0xf5f28fa202940a10,
             0xb3f5fb2687b4961a,
             0xa1a893b53e2ae580,
             0x9894999d1a3caee9,
             0x6f67b7631863366b,
             0x058191924350bcd7,
-        ]),
-        c1: ZFp([
+        ])).unwrap(),
+        c1: ZFp::from_repr(FqRepr([
             0xa5a9c0759e23f606,
             0xaaa0c59dbccd60c3,
             0x3bb17e18e2867806,
             0x1b1ab6cc8541b367,
             0xc2b6ed0ef2158547,
             0x11922a097360edf3,
-        ]),
+        ])).unwrap(),
     },
-    y: ZFp2 {
-        c0: ZFp([
+    ZFp2 {
+        c0: ZFp::from_repr(FqRepr([
             0x6d8bf5079fb65e61,
             0xc52f05df531d63a5,
             0x7f4a4d344ca692c9,
             0xa887959b8577c95f,
             0x4347fe40525c8734,
             0x197d145bbaff0bb5,
-        ]),
-        c1: ZFp([
+        ])).unwrap(),
+        c1: ZFp::from_repr(FqRepr([
             0x0c3e036d209afa4e,
             0x0601d8f4863f9e23,
             0xe0832636bacc0a84,
             0xeb2def362a476f84,
             0x64044f659f0ee1e9,
             0x0ed54f48d5a1caa7,
-        ]),
+        ])).unwrap(),
     },
-    z: ZFp2 {
-        c0: ZFp([
+    ZFp2 {
+        c0: ZFp::from_repr(FqRepr([
             0x760900000002fffd,
             0xebf4000bc40c0002,
             0x5f48985753c758ba,
             0x77ce585370525745,
             0x5c071a97a256ec6d,
             0x15f65ec3fa80e493,
-        ]),
-        c1: ZFp([
+        ])).unwrap(),
+        c1: ZFp::from_repr(FqRepr([
             0x0000000000000000,
             0x0000000000000000,
             0x0000000000000000,
             0x0000000000000000,
             0x0000000000000000,
             0x0000000000000000,
-        ]),
+        ])).unwrap(),
     },
-});
+));
 
 /// INV = -(q^{-1} mod 2^64) mod 2^64
 pub const INV: u64 = 0xffff_fffe_ffff_ffff;
