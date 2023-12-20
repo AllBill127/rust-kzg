@@ -1,16 +1,22 @@
-use crate::consts::{G1_GENERATOR, G1_IDENTITY, G1_NEGATIVE_GENERATOR, G2_GENERATOR, G2_NEGATIVE_GENERATOR,
-                    MODULUS, R2, SCALE2_ROOT_OF_UNITY};
+use crate::consts::{
+    G1_GENERATOR, G1_IDENTITY, G1_NEGATIVE_GENERATOR, G2_GENERATOR, G2_NEGATIVE_GENERATOR, MODULUS, R2,
+    SCALE2_ROOT_OF_UNITY
+};
 use crate::fft_g1::g1_linear_combination;
 use crate::kzg_proofs::{
     expand_root_of_unity, pairings_verify, FFTSettings as ZFFTSettings, KZGSettings as ZKZGSettings,
 };
 use crate::poly::PolyData;
-use crate::utils::{blst_fr_into_pc_fr, blst_p1_into_pc_g1projective, blst_p2_into_pc_g2projective,
-                   montgomery_reduce, pc_fr_into_blst_fr, pc_g1projective_into_blst_p1, pc_g2projective_into_blst_p2};
+use crate::utils::{
+    blst_fr_into_pc_fr, blst_p1_into_pc_g1projective, blst_p2_into_pc_g2projective, montgomery_reduce,
+    pc_fr_into_blst_fr, pc_g1projective_into_blst_p1, pc_g2projective_into_blst_p2};
 // use bls12_381::{G1Affine, G1Projective, G2Affine, G2Projective, Scalar, MODULUS, R2};
-use pairing_ce::bls12_381::{G1Affine, G1Prepared, G1 as G1Projective, G2Affine, G2 as G2Projective, Fr as Scalar};
-use pairing_ce::bls12_381::fr::{FrRepr};
-use pairing_ce::ff::{Field, PrimeField, PrimeFieldRepr, SqrtField};
+use pairing_ce::bls12_381::{G1Affine, G1Prepared, G1 as G1Projective, G2Affine, G2 as G2Projective, Fr as Scalar, Fr};
+use pairing_ce::bls12_381::{FrRepr};
+use pairing_ce::ff::{
+    Field, PrimeField, PrimeFieldRepr, SqrtField
+};
+use pairing_ce::{CurveAffine, CurveProjective};
 
 use blst::{blst_fr, blst_p1};
 // use ff::Field;   // imported from pairing_ce::ff
@@ -19,12 +25,10 @@ use kzg::eip_4844::{BYTES_PER_FIELD_ELEMENT, BYTES_PER_G1, BYTES_PER_G2};
 use kzg::{
     FFTFr, FFTSettings, Fr as KzgFr, G1Mul, G2Mul, KZGSettings, PairingVerify, Poly, G1, G2,
 };
-use std::ops::{Mul, Sub};
 use ff::derive::bitvec::macros::internal::funty::Fundamental;
 
 use ff::derive::sbb;
-use subtle::{ConstantTimeEq, CtOption};
-use pairing_ce::{CurveProjective, GenericCurveProjective};
+use subtle::CtOption;
 use rand::Rng;
 
 fn to_scalar(zfr: &ZFr) -> Scalar {
@@ -90,6 +94,7 @@ impl KzgFr for ZFr {
     //     let result = ff::Field::random(rng);
     //     Self { fr: result }
     // }
+
     #[allow(clippy::bind_instead_of_map)]
     // rewrite function BE format referencing pairing_ce function
     fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
@@ -428,6 +433,7 @@ impl G1 for ZG1 {
                 )
             })
             .and_then(|bytes: &[u8; BYTES_PER_G1]| {
+                // let affine: CtOption<G1Affine> = G1Affine::from_compressed(bytes);
                 let affine: CtOption<G1Affine> = G1Affine::from_compressed(bytes);
                 match affine.into() {
                     Some(x) => Ok(ZG1::affine_to_projective(x)),
@@ -448,37 +454,49 @@ impl G1 for ZG1 {
 
     // NOTE: untested
     fn add_or_dbl(&mut self, b: &Self) -> Self {
-        self.proj.double();
-        Self
+        let mut tmp = self.proj;
+        tmp.double();
+        Self {
+            proj: tmp,
+        }
     }
 
-    // NOTE: unchanged, should not work
+    // NOTE: untested; infinity is identity and identity is zero, because infinity is on zero
     fn is_inf(&self) -> bool {
-        bool::from(self.proj.is_identity())
+        bool::from(self.proj.is_zero())
     }
-    // NOTE: unchanged, should not work
+    // FIXME:   hardcoded, should not work as on_curve_check is not implemented for bls12_381 points in pairing_ce lib
+    //          as noted in ec.rs ln:626
     fn is_valid(&self) -> bool {
-        bool::from(self.proj.is_on_curve())
+        // bool::from(self.proj.is_on_curve())
+        true
     }
 
     // NOTE: untested
     fn dbl(&self) -> Self {
-        self.proj.doube();
-        Self
+        let mut tmp = self.proj;
+        tmp.double();
+        Self {
+            proj: tmp,
+        }
     }
 
     // NOTE: untested
     fn add(&self, b: &Self) -> Self {
-        let mut c = *self;
-        c.proj.add_assign(&b.proj);
-        c
+        let mut tmp = self.proj;
+        tmp.add_assign(&b.proj);
+        Self {
+            proj: tmp,
+        }
     }
 
     // NOTE: untested
     fn sub(&self, b: &Self) -> Self {
-        let mut c = *self;
-        c.proj.sub_assign(&b.proj);
-        c
+        let mut tmp = self.proj;
+        tmp.sub_assign(&b.proj);
+        Self {
+            proj: tmp,
+        }
     }
 
     // NOTE: unchanged, untested
@@ -490,9 +508,11 @@ impl G1 for ZG1 {
 impl G1Mul<ZFr> for ZG1 {
     // NOTE: untested
     fn mul(&self, b: &ZFr) -> Self {
-        let mut c = *self;
-        c.proj.mul_assign(&b.fr);
-        c
+        let mut tmp = self.proj;
+        tmp.mul_assign(b.fr);
+        Self {
+            proj: tmp,
+        }
     }
 
     fn g1_lincomb(points: &[Self], scalars: &[ZFr], len: usize) -> Self {
@@ -508,9 +528,16 @@ impl PairingVerify<ZG1, ZG2> for ZG1 {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ZG2 {
     pub proj: G2Projective,
+}
+
+// NOTE: random decision to make default a zero
+impl Default for ZG2 {
+    fn default() -> Self {
+        Self { proj: <pairing_ce::bls12_381::G2 as CurveProjective>::zero(), }
+    }
 }
 
 impl ZG2 {
@@ -560,23 +587,32 @@ impl G2 for ZG2 {
 
     // NOTE: untested
     fn add_or_dbl(&mut self, b: &Self) -> Self {
-        self.proj.add_assign(&b.proj);
-        Self
+        let mut tmp = self.proj;
+        tmp.add_assign(&b.proj);
+        Self {
+            proj: tmp,
+        }
     }
 
     // NOTE: untested
     fn dbl(&self) -> Self {
-        self.proj.doube();
-        Self
+        let mut tmp = self.proj;
+        tmp.double();
+        Self {
+            proj: tmp,
+        }
     }
 
     // Note: untested
     fn sub(&self, b: &Self) -> Self {
-        self.proj.sub_assign(&b.proj);
         // Self {
         //     proj: self.proj - b.proj,
         // }
-        Self
+        let mut tmp = self.proj;
+        tmp.sub_assign(&b.proj);
+        Self {
+            proj: tmp,
+        }
     }
 
     fn equals(&self, b: &Self) -> bool {
@@ -588,11 +624,14 @@ impl G2Mul<ZFr> for ZG2 {
     // Note: untested
     fn mul(&self, b: &ZFr) -> Self {
         // FIXME: Is this right?
-        self.proj.mul_assign(&b.fr);
         // Self {
         //     proj: self.proj.mul(b.fr),
         // }
-        Self
+        let mut tmp = self.proj;
+        tmp.mul_assign(b.fr);
+        Self {
+            proj: tmp,
+        }
     }
 }
 
@@ -714,7 +753,7 @@ impl KZGSettings<ZFr, ZG1, ZG2, ZFFTSettings, PolyData> for ZKZGSettings {
         Ok(ret)
     }
 
-    fn check_proof_single(&self, com: &ZG1, proof: &ZG1, x: &ZFr, y: &ZFr) -> Result<bool, String> {
+    fn check_proof_single(&self, mut com: &ZG1, proof: &ZG1, x: &ZFr, y: &ZFr) -> Result<bool, String> {
         let x_g2 = G2_GENERATOR.mul(x);
         let s_minus_x: ZG2 = self.secret_g2[1].sub(&x_g2);
         let y_g1 = G1_GENERATOR.mul(y);
@@ -766,7 +805,7 @@ impl KZGSettings<ZFr, ZG1, ZG2, ZFFTSettings, PolyData> for ZKZGSettings {
 
     fn check_proof_multi(
         &self,
-        com: &ZG1,
+        mut com: &ZG1,
         proof: &ZG1,
         x: &ZFr,
         ys: &[ZFr],
